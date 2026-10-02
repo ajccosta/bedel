@@ -8,6 +8,7 @@ import { initCourseForm, readCourse, fillCourse } from "./course.js";
 import { initStudentInputs } from "./students.js";
 import { initAssignmentForm, loadAssignments } from "./assignments.js";
 import { release } from "./release.js";
+import { renderAssignments, stateOf, forgetGroups, keepLog } from "./asgpage.js";
 import { ctx, session, students } from "./state.js";
 import * as ops from "./ops.js";
 
@@ -130,13 +131,10 @@ async function loadOverview() {
     if (byClass.length) for (const [c, iso] of byClass.sort()) soft.append(el("div", `${c}: ${when(iso)}`));
     else soft.textContent = d.soft_deadline ? when(d.soft_deadline) : "—";
     const hard = el("td", d.hard_deadline ? when(d.hard_deadline) : "Never locks");
-    const softs = byClass.length ? byClass.map(([, iso]) => Date.parse(iso)) : d.soft_deadline ? [Date.parse(d.soft_deadline)] : [];
-    const state = d.hard_deadline && Date.parse(d.hard_deadline) <= now ? "Locked"
-      : softs.length && softs.every((x) => x <= now) ? "Late from here"
-      : softs.some((x) => x <= now) ? "Late for some classes" : "Open";
-    tr.append(name, soft, hard, el("td", state));
+    tr.append(name, soft, hard, el("td", stateOf(d, now)[0]));
     body.append(tr);
   }
+  renderAssignments(defs, course, when);
 }
 
 async function lastRun(token, workflow) {
@@ -181,7 +179,24 @@ async function signIn() {
   setStatus("courseTokenStatus", `Ready. Changes are made as ${ctx.login}.`, "ok");
   if (course) fillCourse(course);
   $("tools").hidden = false;
+  $("releaseSection").hidden = false;
+  $("asgSignedOut").hidden = true;
+  forgetGroups();
+  showView();
   await refresh();
+}
+
+// Two pages in one, Overview and Assignments, so a token checked on one is
+// there on the other: it lives only in this tab's memory.
+function showView() {
+  const view = location.hash === "#assignments" ? "assignments" : "overview";
+  for (const p of document.querySelectorAll("[data-view-panel]")) p.hidden = p.dataset.viewPanel !== view;
+  for (const a of document.querySelectorAll("[data-view]")) {
+    if (a.dataset.view === view) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+  }
+  // Signing in happens under Make changes; once signed in, that section holds
+  // the course's settings, which belong to the overview.
+  $("changes").hidden = view === "assignments" && !!ctx.login;
 }
 
 function showTab(name) {
@@ -236,6 +251,9 @@ $("courseToken").addEventListener("keydown", (e) => { if (e.key === "Enter") sig
 $("courseDays").addEventListener("input", refreshLinks);
 $("botDays").addEventListener("input", refreshLinks);
 for (const b of document.querySelectorAll("[data-tab]")) b.onclick = () => showTab(b.dataset.tab);
+document.addEventListener("assignments-changed", (e) => { keepLog(e.detail.name, e.detail.log); refresh(); });
+window.addEventListener("hashchange", () => { showView(); if (location.hash === "#assignments") scrollTo(0, 0); });
+showView();
 runButton("runRelease", "releaseLog", async () => { await release(); await refresh(); });
 runButton("saveCourse", "courseLog", saveCourse);
 runButton("saveStudents", "studentsLog", saveStudents);

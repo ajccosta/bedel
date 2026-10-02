@@ -225,3 +225,22 @@ ul.health li.bad::before { content: "✗ "; }
 #studentLink { width: min(560px, 100%); }
 #tools { margin-top: 24px; }
 ol.log li > div.actions { grid-column: 2; display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+
+/* ---------- the course page's two pages ---------- */
+nav.views { display: flex; justify-content: flex-start; gap: 22px; border-bottom: 1px solid var(--line); margin-top: 20px; padding: 0; }
+nav.views a { color: var(--muted); text-decoration: none; padding: 10px 0; margin-bottom: -1px; border-bottom: 2px solid transparent; font-weight: 500; }
+nav.views a:hover { color: var(--text); }
+nav.views a[aria-current="page"] { color: var(--text); border-bottom-color: var(--accent); }
+.asg-list { display: grid; gap: 16px; }
+.asg { border: 1px solid var(--line); border-radius: 10px; padding: 20px; background: var(--surface); }
+.asg > header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.asg h3 { margin: 0; font-size: 1.15rem; }
+.asg > .hint { margin: 4px 0 12px; }
+.pill { font-size: .8rem; font-weight: 600; padding: 2px 10px; border-radius: 999px; background: var(--surface-2); color: var(--muted); }
+.pill.ok { color: var(--ok); } .pill.warn { color: var(--warn); } .pill.bad { color: var(--bad); }
+dl.deadlines { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; margin: 0 0 8px; font-size: .95rem; }
+dl.deadlines dt { color: var(--muted); }
+dl.deadlines dd { margin: 0; }
+.asg .edit { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 4px; }
+.asg details.groups { margin-top: 14px; }
+.asg details.groups .table-scroll { margin-top: 8px; }

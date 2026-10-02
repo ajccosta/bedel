@@ -127,6 +127,12 @@ def status(gh, org, group, assignment, soft=None, notes=(), class_="",
         grant_team(gh, org, group["slug"], repo, permission=OPEN_PERMISSION)
         row["state"] = "writable"
         row["note"] = add_note(row["note"], "unlocked")
+    elif lock and permission == LOCKED_PERMISSION and not (hard and now() >= hard):
+        # Locked, but the hard deadline has since moved later (or gone): the lock
+        # no longer has a deadline behind it, so the repository opens again.
+        grant_team(gh, org, group["slug"], repo, permission=OPEN_PERMISSION)
+        row["state"] = "writable"
+        row["note"] = add_note(row["note"], "reopened: the hard deadline is later now")
     elif lock and hard and now() >= hard and permission == OPEN_PERMISSION:
         grant_team(gh, org, group["slug"], repo, permission=LOCKED_PERMISSION)
         row["state"] = "read-only"

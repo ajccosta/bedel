@@ -548,12 +548,17 @@ cannot reach. It does not replace `pushed_at`, which is still what the report gr
 GH_TOKEN=$(gh auth token) python scripts/deadlines.py --unlock a3
 ```
 
-That gives write access back to every group for that assignment. Move the deadline too,
-or the next hourly run locks them straight back:
+That gives write access back to every group for that assignment straight away. Move the
+deadline too, or the next run locks them straight back:
 
 ```
 GH_TOKEN=$(gh auth token) python scripts/new_assignment.py a3 --hard "2026-11-29 23:59"
 ```
+
+Moving the hard deadline later is enough on its own: the next *Assignment deadlines* run
+(every 30 minutes, or run it from the Actions tab) reopens every repository that is locked
+but no longer past its deadline. The course's page does both for you: *Assignments → Edit
+deadlines* saves the new dates and starts that run.
 
 For a single group, change that one team's permission on the repo in the org UI.
 

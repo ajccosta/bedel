@@ -364,7 +364,8 @@ def main():
         "template": template,
         "soft_week": soft_week,
         "soft_manual": soft_manual,
-        "soft_by_class": by_class or existing.get("soft_by_class", {}),
+        # One date (or none) for everyone replaces any per-class dates.
+        "soft_by_class": {} if soft_manual else (by_class or existing.get("soft_by_class", {})),
         "soft_deadline": soft.isoformat() if (by_class and soft) else
                          deadline_value(soft_given, soft, existing.get("soft_deadline")),
         "hard_deadline": deadline_value(hard_given, hard, existing.get("hard_deadline")),
