@@ -1,0 +1,1080 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bedel — run your course on GitHub</title>
+<meta name="description" content="Group registration, one repository per group per assignment, and deadlines enforced on the minute. A flexible, self-hosted alternative to GitHub Classroom and classroom50: every workflow, rule and form is a file you own.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f6f4f'/%3E%3Ccircle cx='12' cy='16' r='5' fill='none' stroke='white' stroke-width='3'/%3E%3Cpath d='M17 16h10M23 16v4M27 16v3' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #fbfaf7;
+  --surface: #ffffff;
+  --surface-2: #f3f1ec;
+  --text: #1d1f1c;
+  --muted: #5f645d;
+  --line: #e2dfd7;
+  --accent: #2f6f4f;
+  --accent-ink: #ffffff;
+  --accent-soft: #e5efe8;
+  --ok: #2f7d4a;
+  --warn: #a8660b;
+  --bad: #b3261e;
+  --code-bg: #f1efe9;
+  --shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121412;
+    --surface: #1a1d1a;
+    --surface-2: #222622;
+    --text: #e8ebe6;
+    --muted: #a2a99f;
+    --line: #2f342f;
+    --accent: #6cc092;
+    --accent-ink: #0f1a13;
+    --accent-soft: #1f3327;
+    --ok: #6cc092;
+    --warn: #e0a54a;
+    --bad: #f08a80;
+    --code-bg: #232723;
+    --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121412; --surface: #1a1d1a; --surface-2: #222622; --text: #e8ebe6; --muted: #a2a99f;
+  --line: #2f342f; --accent: #6cc092; --accent-ink: #0f1a13; --accent-soft: #1f3327;
+  --ok: #6cc092; --warn: #e0a54a; --bad: #f08a80; --code-bg: #232723; --shadow: none;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 16px/1.6 Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); }
+code, .mono { font-family: "JetBrains Mono", ui-monospace, Menlo, monospace; font-size: .88em; }
+code { background: var(--code-bg); padding: .1em .35em; border-radius: 4px; }
+.wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
+nav { display: flex; align-items: center; justify-content: space-between; padding: 18px 0; gap: 16px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.15rem; color: var(--text); text-decoration: none; }
+.brand svg { width: 28px; height: 28px; }
+nav .links { display: flex; gap: 18px; flex-wrap: wrap; }
+nav .links a { color: var(--muted); text-decoration: none; font-size: .95rem; }
+nav .links a:hover { color: var(--text); }
+
+.hero { padding: 56px 0 40px; }
+.eyebrow { display: inline-block; font-size: .8rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); padding: 4px 10px; border-radius: 999px; }
+h1 { font-size: clamp(2.1rem, 5vw, 3.4rem); line-height: 1.1; letter-spacing: -.02em; margin: 18px 0 16px; max-width: 16ch; }
+.lead { font-size: 1.15rem; color: var(--muted); max-width: 62ch; margin: 0 0 28px; }
+.cta { display: flex; gap: 12px; flex-wrap: wrap; }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--surface);
+  color: var(--text); padding: 10px 18px; border-radius: 8px; font: inherit; font-weight: 600; font-size: .95rem;
+  cursor: pointer; text-decoration: none;
+}
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.primary:hover { filter: brightness(1.07); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn.small { padding: 6px 12px; font-size: .88rem; }
+
+section { padding: 48px 0; }
+h2 { font-size: 1.75rem; letter-spacing: -.01em; margin: 0 0 8px; }
+.sub { color: var(--muted); margin: 0 0 28px; max-width: 64ch; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px; box-shadow: var(--shadow); }
+.card h3 { margin: 0 0 6px; font-size: 1.05rem; }
+.card p { margin: 0; color: var(--muted); font-size: .95rem; }
+
+.files { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 24px; align-items: start; }
+@media (max-width: 760px) { .files { grid-template-columns: 1fr; } }
+.tree { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: .85rem; line-height: 1.9; overflow-x: auto; }
+.tree div { white-space: nowrap; }
+.tree .c { color: var(--muted); }
+.tree .k { color: var(--accent); font-weight: 500; }
+
+table.compare { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-size: .95rem; }
+.compare th, .compare td { text-align: left; padding: 14px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.compare thead th { background: var(--surface-2); font-size: .85rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.compare tr:last-child td { border-bottom: 0; }
+.compare td:first-child { font-weight: 600; width: 24%; }
+.compare td:nth-child(2) { background: var(--accent-soft); }
+.table-scroll { overflow-x: auto; }
+
+.notice { border: 1px solid var(--line); background: var(--surface-2); border-radius: 10px; padding: 14px 16px; font-size: .93rem; color: var(--muted); }
+.notice strong { color: var(--text); }
+
+.steps { counter-reset: step; display: grid; gap: 16px; }
+.step { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 22px; box-shadow: var(--shadow); }
+.step > header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+.step > header::before {
+  counter-increment: step; content: counter(step); flex: none; display: inline-grid; place-items: center;
+  width: 28px; height: 28px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: .9rem;
+}
+.step h3 { margin: 0; font-size: 1.1rem; }
+.step p { margin: 0 0 12px; color: var(--muted); font-size: .95rem; }
+.row { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; margin: 10px 0; }
+label { display: grid; gap: 4px; font-size: .85rem; font-weight: 600; color: var(--muted); }
+input, select { font: inherit; font-size: .95rem; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-width: 0; }
+input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+input[type="number"] { width: 90px; }
+input.wide { width: min(420px, 100%); }
+input[type="file"] { padding: 6px; max-width: 100%; }
+.check { display: flex; align-items: center; gap: 8px; font-weight: 500; color: var(--text); font-size: .95rem; }
+.status { font-size: .9rem; margin-top: 8px; min-height: 1.4em; }
+.status.ok { color: var(--ok); } .status.warn { color: var(--warn); } .status.bad { color: var(--bad); }
+.classes { width: 100%; border-collapse: collapse; margin: 6px 0; }
+.classes th { text-align: left; font-size: .8rem; color: var(--muted); font-weight: 600; padding: 4px 6px; }
+.classes td { padding: 4px 6px; }
+.classes input { width: 100%; }
+.classes td:nth-child(1) { width: 90px; }
+.classes td:nth-child(3) { width: 120px; }
+.classes td:last-child { width: 40px; }
+.iconbtn { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 1.2rem; padding: 4px 8px; }
+.iconbtn:hover { color: var(--bad); }
+ol.log { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 6px; font-size: .93rem; }
+ol.log li { display: grid; grid-template-columns: 22px 1fr; gap: 6px; }
+ol.log li::before { content: "·"; color: var(--muted); text-align: center; font-weight: 700; }
+ol.log li.run::before { content: "…"; color: var(--warn); }
+ol.log li.ok::before { content: "✓"; color: var(--ok); }
+ol.log li.warn::before { content: "!"; color: var(--warn); }
+ol.log li.bad::before { content: "✗"; color: var(--bad); }
+.done { margin-top: 16px; padding: 16px; border-radius: 10px; background: var(--accent-soft); display: none; }
+.done.show { display: block; }
+.done a { word-break: break-all; }
+details { margin-top: 10px; }
+summary { cursor: pointer; color: var(--muted); font-size: .92rem; }
+footer { border-top: 1px solid var(--line); padding: 28px 0 48px; color: var(--muted); font-size: .9rem; }
+.theme { border: 1px solid var(--line); background: var(--surface); color: var(--muted); border-radius: 8px; padding: 4px 10px; cursor: pointer; font: inherit; font-size: .85rem; }
+@media (max-width: 560px) {
+  .classes thead { display: none; }
+  .classes tr { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+  .classes td { width: auto !important; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <a class="brand" href="#">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><circle cx="12" cy="16" r="5" fill="none" stroke="var(--accent-ink)" stroke-width="3"/><path d="M17 16h10M23 16v4M27 16v3" stroke="var(--accent-ink)" stroke-width="3" stroke-linecap="round"/></svg>
+      bedel
+    </a>
+    <div class="links">
+      <a href="#why">Why bedel</a>
+      <a href="#setup">Set up a course</a>
+      <a href="#assignments">Assignments</a>
+      <a id="repoLink" href="https://github.com/ajccosta/bedel">GitHub</a>
+      <button class="theme" id="themeBtn" type="button" aria-label="Switch colour theme">◐</button>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <span class="eyebrow">An alternative to GitHub Classroom and classroom50</span>
+    <h1>Run your course on GitHub, your way.</h1>
+    <p class="lead">bedel signs up your students' groups, gives each group its own repository for every
+      assignment, and enforces your deadlines to the minute. It all runs from one repository in your own
+      organization, so every workflow, rule and form is a file you can read and change.</p>
+    <div class="cta">
+      <a class="btn primary" href="#setup">Set up a course in your browser</a>
+      <a class="btn" id="codeLink" href="https://github.com/ajccosta/bedel">See the code</a>
+    </div>
+  </header>
+</div>
+
+<section>
+  <div class="wrap">
+    <div class="grid">
+      <div class="card"><h3>Groups register themselves</h3><p>Students fill in a form with their student numbers and GitHub usernames. bedel checks every number against your roster, waits for each member to confirm, then creates their team and invites them.</p></div>
+      <div class="card"><h3>A repository per group, per assignment</h3><p>Release an assignment and every group gets a private repository with your starting files, plus an issue that emails them. Groups that register later get theirs automatically.</p></div>
+      <div class="card"><h3>Deadlines enforced to the minute</h3><p>Work pushed after the soft deadline counts but is marked late. At the hard deadline, the repositories become read-only. Soft deadlines can follow each class's own weekly session.</p></div>
+      <div class="card"><h3>Work carries over</h3><p>An assignment can start from each group's previous one, with the full history and the new starting files committed on top.</p></div>
+      <div class="card"><h3>Evidence students can't rewrite</h3><p>Every push is archived to a private repository, so a force-push can't hide when something happened. Reports show who pushed what, before which deadline.</p></div>
+      <div class="card"><h3>Your students' data stays with you</h3><p>Only student numbers ever reach GitHub, stored as encrypted secrets. Names, emails and the rest of your lists never leave your computer.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="why">
+  <div class="wrap">
+    <h2>Everything is a file you can change</h2>
+    <p class="sub">Hosted classroom tools give you the settings their makers chose. bedel is a repository: the
+      workflows that run it, the rules that decide deadlines and the form students fill in are all plain files in
+      your organization. Change one and push, and that's how your course works now.</p>
+    <div class="files">
+      <div class="tree" aria-label="The files that make up a course">
+        <div><span class="k">course.json</span> <span class="c"># name, group size, classes</span></div>
+        <div><span class="k">.github/workflows/</span></div>
+        <div>&nbsp;&nbsp;register.yml <span class="c"># when groups are processed</span></div>
+        <div>&nbsp;&nbsp;deadlines.yml <span class="c"># when repos are locked</span></div>
+        <div>&nbsp;&nbsp;assignment.yml <span class="c"># releasing an assignment</span></div>
+        <div><span class="k">scripts/</span></div>
+        <div>&nbsp;&nbsp;rules.py <span class="c"># who gets which soft deadline</span></div>
+        <div>&nbsp;&nbsp;register.py <span class="c"># who may register, and how</span></div>
+        <div>&nbsp;&nbsp;deadlines.py <span class="c"># locking and reports</span></div>
+      </div>
+      <div>
+        <div class="card" style="margin-bottom:16px"><h3>Different deadline policy?</h3><p>Soft deadlines come from one short Python function in <code>rules.py</code>. Give one class an extra week, count from the latest member's session instead of the earliest — it's a few lines.</p></div>
+        <div class="card" style="margin-bottom:16px"><h3>Different schedule?</h3><p>Every workflow is ordinary GitHub Actions YAML. Lock at a different time, add an autograder, send a report somewhere — edit the workflow.</p></div>
+        <div class="card"><h3>And still get updates</h3><p>A course keeps bedel as its upstream, so later fixes arrive with one <code>git pull</code>. Your course's own files never conflict.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>bedel and GitHub Classroom</h2>
+    <p class="sub">Both give every student or group a repository made from your template. They differ in who owns the machinery.</p>
+    <div class="table-scroll">
+      <table class="compare">
+        <thead><tr><th></th><th>bedel</th><th>GitHub Classroom</th></tr></thead>
+        <tbody>
+          <tr><td>Where it runs</td><td>GitHub Actions, in a repository in your organization</td><td>GitHub's hosted Classroom service</td></tr>
+          <tr><td>Changing how it works</td><td>Edit any workflow, script, rule or form. It's your code.</td><td>The options the service offers</td></tr>
+          <tr><td>Group sign-up</td><td>An issue form, checked against your roster, confirmed by every member</td><td>An invitation link per assignment</td></tr>
+          <tr><td>Deadlines</td><td>A soft deadline, per class if you like, and a hard deadline that locks repos</td><td>A deadline per assignment</td></tr>
+          <tr><td>Your student list</td><td>Stays on your computer; only student numbers go to GitHub, encrypted</td><td>Kept in the Classroom roster</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="setup">
+  <div class="wrap">
+    <h2>Set up a course</h2>
+    <p class="sub">Six steps, about ten minutes. Run them again any time to change the course, the roster or the token.</p>
+    <p class="notice" style="margin:0 0 20px"><strong>This page has no server.</strong> It runs in your browser and talks only to GitHub's API.
+      Your tokens stay in this tab and are forgotten when you close it. Student lists are read here, and only the student numbers (and classes) are sent to GitHub, encrypted.
+      Prefer a terminal? <code>git clone</code> bedel and run <code>./scripts/setup.sh</code> — it does the same.</p>
+
+    <div class="steps">
+      <div class="step">
+        <header><h3>Your course's organization</h3></header>
+        <p>Students' teams and repositories live in a GitHub organization of their own, one per course edition. A free one is enough.
+          <a href="https://github.com/account/organizations/new?plan=free" target="_blank" rel="noopener">Create an organization</a> if you don't have one, then enter its name.</p>
+        <div class="row">
+          <label>Organization <input id="org" class="wide" placeholder="my-course-2026" autocomplete="off" spellcheck="false"></label>
+          <label>Repository <input id="repo" value="registration" autocomplete="off" spellcheck="false"></label>
+        </div>
+      </div>
+
+      <div class="step">
+        <header><h3>A token for this page</h3></header>
+        <p>GitHub doesn't let a page create tokens, so this is the one thing you click through yourself. The link fills in everything except one field:
+          under <strong>Repository access</strong>, choose <strong>All repositories</strong>, since the course repository doesn't exist yet. It lasts 7 days and is only for setting up.</p>
+        <div class="row">
+          <a class="btn" id="setupTokenLink" target="_blank" rel="noopener">Create the setup token ↗</a>
+        </div>
+        <div class="row">
+          <label>Setup token <input id="setupToken" class="wide" type="password" placeholder="github_pat_…" autocomplete="off" spellcheck="false"></label>
+          <button class="btn" id="checkSetup" type="button">Check</button>
+        </div>
+        <div class="status" id="setupStatus"></div>
+        <details><summary>What this token can do, and why</summary>
+          <p style="margin-top:8px">Organization administration: lock down member permissions (step 6). Administration: create the course repository. Contents: write <code>course.json</code>.
+            Issues: create the labels. Secrets: store the roster and the bot's token, encrypted. Actions and Workflows: release assignments and regenerate the students' files.
+            Members (read): check that you own the organization. It only reaches this organization.</p>
+        </details>
+      </div>
+
+      <div class="step">
+        <header><h3>The course</h3></header>
+        <p>Students see the name. Classes are the weekly sessions soft deadlines are counted from; leave them out if your course has none.</p>
+        <div class="row">
+          <label>Course name <input id="cName" class="wide" placeholder="Distributed Systems"></label>
+        </div>
+        <div class="row">
+          <label>Smallest group <input id="cMin" type="number" min="1" max="6" value="2"></label>
+          <label>Largest group <input id="cMax" type="number" min="1" max="6" value="2"></label>
+          <label>Time zone <select id="cTz"></select></label>
+        </div>
+        <div class="row">
+          <label>What students call their number (optional) <input id="cHint" class="wide" placeholder="your student number"></label>
+        </div>
+        <table class="classes">
+          <thead><tr><th>Class</th><th>Day</th><th>Session ends</th><th>Note (optional)</th><th></th></tr></thead>
+          <tbody id="classRows"></tbody>
+        </table>
+        <button class="btn small" id="addClass" type="button">+ Add a class</button>
+        <div class="status" id="courseStatus"></div>
+      </div>
+
+      <div class="step">
+        <header><h3>Your students</h3></header>
+        <p>The roster is who may register: a CSV export with a student-number column, or a plain list of numbers.
+          Class listings are optional: one file per class with a <code>Class: P1</code> (or <code>Turno: P1</code>) line,
+          or one file of <code>number,class</code> lines. Leave both empty to keep what's already stored.</p>
+        <div class="row">
+          <label>Roster <input id="roster" type="file" accept=".csv,.tsv,.txt,text/*"></label>
+          <label id="colWrap" hidden>Student-number column <select id="rosterCol"></select></label>
+        </div>
+        <div class="status" id="rosterStatus"></div>
+        <div class="row">
+          <label>Class listings <input id="listings" type="file" multiple></label>
+        </div>
+        <div class="status" id="listingStatus"></div>
+        <div class="row">
+          <label>Test students <input id="testN" type="number" min="0" max="20" value="0"></label>
+          <span style="color:var(--muted);font-size:.9rem">Adds 99901, 99902, … so you can register a test group with your own accounts. Set back to 0 before term.</span>
+        </div>
+      </div>
+
+      <div class="step">
+        <header><h3>The bot's token</h3></header>
+        <p>The bot keeps this token to create teams and repositories and to lock them at deadlines, so it gets only that, for as long as your term lasts.
+          Again choose <strong>All repositories</strong>: the bot creates new repositories all term. It must belong to an owner of the organization.</p>
+        <div class="row">
+          <label>Lasts (days) <input id="botDays" type="number" min="1" max="366" value="180"></label>
+          <a class="btn" id="botTokenLink" target="_blank" rel="noopener">Create the bot's token ↗</a>
+        </div>
+        <div class="row">
+          <label>Bot token <input id="botToken" class="wide" type="password" placeholder="github_pat_… (empty keeps the stored one)" autocomplete="off" spellcheck="false"></label>
+        </div>
+        <details><summary>What the bot's token can do</summary>
+          <p style="margin-top:8px">Administration: create repositories and give teams access. Contents: starting files, deadlines, the push archive. Issues: announce assignments.
+            Commit statuses: mark late commits. Workflows: starting files that contain workflows. Members: create teams and invite students.
+            Before it's stored, the page checks each permission with a request GitHub refuses without creating anything.</p>
+        </details>
+      </div>
+
+      <div class="step">
+        <header><h3>Set it up</h3></header>
+        <p>Locks down what organization members can do, creates the repository from bedel, adds the labels, stores the secrets and writes <code>course.json</code>.
+          Every part checks what's already there first, so running it again only changes what differs.</p>
+        <button class="btn primary" id="runSetup" type="button">Set up the course</button>
+        <ol class="log" id="setupLog"></ol>
+        <div class="done" id="setupDone"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="assignments">
+  <div class="wrap">
+    <h2>Release an assignment</h2>
+    <p class="sub">Uses the setup token above. Every registered group gets its own private repository with your starting files.
+      You can do the same from your course repository's <strong>Actions</strong> tab, under <em>Release an assignment</em>.</p>
+    <div class="step">
+      <div class="row">
+        <label>Name <input id="aName" placeholder="a1" autocomplete="off" spellcheck="false"></label>
+        <label>Starting files: a folder <input id="aFolder" type="file" webkitdirectory multiple></label>
+        <label>…or an existing repository <input id="aTemplate" placeholder="a1-template" autocomplete="off" spellcheck="false"></label>
+      </div>
+      <div class="status" id="folderStatus"></div>
+      <div class="row">
+        <label>Soft deadline
+          <select id="aSoftMode">
+            <option value="week">By class: a week after each class's session in…</option>
+            <option value="date">One date for everyone</option>
+            <option value="none">None</option>
+          </select>
+        </label>
+        <label id="aSoftWeekWrap">Week of <input id="aSoftWeek" type="date"></label>
+        <label id="aSoftDateWrap" hidden>Soft deadline <input id="aSoft" type="datetime-local"></label>
+      </div>
+      <div class="row">
+        <label>Hard deadline (repos lock) <input id="aHard" type="datetime-local"></label>
+        <label class="check"><input id="aNoHard" type="checkbox"> Never lock</label>
+      </div>
+      <div class="row">
+        <label>Start from each group's earlier assignment <select id="aCarry"><option value="">No — start from the files only</option></select></label>
+        <label class="check"><input id="aDry" type="checkbox"> Dry run (only show what would happen)</label>
+      </div>
+      <button class="btn primary" id="runRelease" type="button">Release</button>
+      <ol class="log" id="releaseLog"></ol>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    bedel is open source: read it, change it, run it. <a id="footRepo" href="https://github.com/ajccosta/bedel">github.com/ajccosta/bedel</a> ·
+    <a id="footDocs" href="https://github.com/ajccosta/bedel/blob/main/scripts/README.md">Staff guide</a>.
+    <br><em>Bedel</em> is Portuguese for the university porter who keeps the rooms and the timetable: he lets you in, and locks the door when time is up.
+  </div>
+</footer>
+
+<script type="module">
+import sodium from "https://cdn.jsdelivr.net/npm/libsodium-wrappers@0.7.15/+esm";
+
+const $ = (id) => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+// The repository courses are created from. A fork of bedel can point its own page at itself.
+const TEMPLATE = params.get("template") || "ajccosta/bedel";
+const API = "https://api.github.com";
+const WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+const ASSIGNMENT_RE = /^[a-z0-9][a-z0-9_-]*$/;
+const SKIP = new Set([".git", ".DS_Store", "__pycache__", ".pytest_cache", "node_modules"]);
+const MAX_BLOB = 10 * 1024 * 1024;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+for (const id of ["repoLink", "codeLink", "footRepo"]) $(id).href = `https://github.com/${TEMPLATE}`;
+$("footRepo").textContent = `github.com/${TEMPLATE}`;
+$("footDocs").href = `https://github.com/${TEMPLATE}/blob/main/scripts/README.md`;
+
+// ---------- theme ----------
+$("themeBtn").onclick = () => {
+  const dark = document.documentElement.dataset.theme
+    ? document.documentElement.dataset.theme === "dark"
+    : matchMedia("(prefers-color-scheme: dark)").matches;
+  document.documentElement.dataset.theme = dark ? "light" : "dark";
+};
+
+// ---------- GitHub API ----------
+class GitHubError extends Error {
+  constructor(status, message) { super(message); this.status = status; }
+}
+async function gh(token, method, path, body) {
+  const headers = { Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+  let r;
+  try {
+    r = await fetch(API + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+  } catch (e) {
+    throw new GitHubError(0, `Couldn't reach GitHub (${e.message}).`);
+  }
+  const text = await r.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+  if (!r.ok) {
+    let msg = (data && data.message) || `HTTP ${r.status}`;
+    if (data && Array.isArray(data.errors) && data.errors.length) {
+      msg += ": " + data.errors.map((e) => e.message || e.code || JSON.stringify(e)).join("; ");
+    }
+    throw new GitHubError(r.status, msg);
+  }
+  return data;
+}
+async function exists(token, path) {
+  try { await gh(token, "GET", path); return true; }
+  catch (e) { if (e.status === 404) return false; throw e; }
+}
+async function paginate(token, path) {
+  const out = [];
+  for (let page = 1; page < 50; page++) {
+    const sep = path.includes("?") ? "&" : "?";
+    const items = await gh(token, "GET", `${path}${sep}per_page=100&page=${page}`);
+    out.push(...items);
+    if (items.length < 100) break;
+  }
+  return out;
+}
+function b64FromBytes(bytes) {
+  let s = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+const b64FromText = (text) => b64FromBytes(new TextEncoder().encode(text));
+const textFromB64 = (b64) => new TextDecoder().decode(Uint8Array.from(atob(b64.replace(/\s/g, "")), (c) => c.charCodeAt(0)));
+
+async function setSecret(token, org, repo, name, value) {
+  await sodium.ready;
+  const key = await gh(token, "GET", `/repos/${org}/${repo}/actions/secrets/public-key`);
+  const sealed = sodium.crypto_box_seal(sodium.from_string(value),
+                                        sodium.from_base64(key.key, sodium.base64_variants.ORIGINAL));
+  await gh(token, "PUT", `/repos/${org}/${repo}/actions/secrets/${name}`, {
+    encrypted_value: sodium.to_base64(sealed, sodium.base64_variants.ORIGINAL), key_id: key.key_id,
+  });
+}
+
+// ---------- token links ----------
+// GitHub fills a new fine-grained token in from these. Repository access is the
+// one field it won't take from a link, which is why the page asks for it in words.
+const SETUP_PERMISSIONS = { organization_administration: "write", administration: "write", contents: "write",
+  issues: "write", secrets: "write", actions: "write", workflows: "write", members: "read" };
+const BOT_PERMISSIONS = { administration: "write", contents: "write", issues: "write", statuses: "write",
+  workflows: "write", members: "write" };
+function tokenUrl(org, name, description, days, permissions) {
+  const q = [`name=${encodeURIComponent(name.slice(0, 40))}`, `description=${encodeURIComponent(description)}`,
+             `expires_in=${days}`];
+  if (org) q.push(`target_name=${encodeURIComponent(org)}`);
+  for (const [k, v] of Object.entries(permissions)) q.push(`${k}=${v}`);
+  return `https://github.com/settings/personal-access-tokens/new?${q.join("&")}`;
+}
+function refreshLinks() {
+  const org = $("org").value.trim();
+  const days = Math.min(366, Math.max(1, parseInt($("botDays").value, 10) || 180));
+  $("setupTokenLink").href = tokenUrl(org, `bedel setup (${org || "course"})`,
+    "Used by the bedel setup page to set up the course", 7, SETUP_PERMISSIONS);
+  $("botTokenLink").href = tokenUrl(org, `bedel bot (${org || "course"})`,
+    "Creates the course's teams and repos, and locks them at deadlines", days, BOT_PERMISSIONS);
+}
+$("org").addEventListener("input", refreshLinks);
+$("botDays").addEventListener("input", refreshLinks);
+refreshLinks();
+
+// ---------- the course form ----------
+const tzSelect = $("cTz");
+const zones = (Intl.supportedValuesOf ? Intl.supportedValuesOf("timeZone") : ["UTC"]);
+if (!zones.includes("UTC")) zones.unshift("UTC");
+for (const z of zones) tzSelect.add(new Option(z, z));
+tzSelect.value = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+
+function addClassRow(name = "", day = "monday", ends = "", note = "") {
+  const tr = document.createElement("tr");
+  tr.innerHTML = `<td><input placeholder="P1" aria-label="Class"></td>
+    <td><select aria-label="Day">${WEEKDAYS.map((d) => `<option value="${d}">${d[0].toUpperCase() + d.slice(1)}</option>`).join("")}</select></td>
+    <td><input type="time" aria-label="Session ends"></td>
+    <td><input placeholder="Lab 2" aria-label="Note"></td>
+    <td><button class="iconbtn" type="button" aria-label="Remove class">×</button></td>`;
+  const [n, d, e, o] = tr.querySelectorAll("input, select");
+  n.value = name; d.value = day; e.value = ends; o.value = note;
+  tr.querySelector("button").onclick = () => { tr.remove(); refreshSoftModes(); };
+  n.addEventListener("input", refreshSoftModes);
+  $("classRows").append(tr);
+}
+$("addClass").onclick = () => { addClassRow(); refreshSoftModes(); };
+
+function readCourse() {
+  const errors = [];
+  const name = $("cName").value.trim();
+  if (!name) errors.push("The course needs a name.");
+  const min = parseInt($("cMin").value, 10), max = parseInt($("cMax").value, 10);
+  if (!(min >= 1 && min <= max && max <= 6)) errors.push("Group size must be 1 to 6, smallest first.");
+  const classes = {};
+  for (const tr of $("classRows").children) {
+    const [n, d, e, o] = tr.querySelectorAll("input, select");
+    const cls = n.value.trim().toUpperCase().replace(/\s+/g, "");
+    if (!cls && !e.value) continue;
+    if (!/^[A-Z0-9]+$/.test(cls)) { errors.push(`'${n.value}' isn't a usable class name (letters and digits, like P1).`); continue; }
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(e.value)) { errors.push(`Class ${cls} needs the time its session ends.`); continue; }
+    if (classes[cls]) { errors.push(`Class ${cls} is listed twice.`); continue; }
+    classes[cls] = { day: d.value, ends: e.value };
+    if (o.value.trim()) classes[cls].note = o.value.trim();
+  }
+  // The same fields, in the same order, as scripts/setup/course.py writes them.
+  const course = { name, group_size: { min, max }, timezone: tzSelect.value, classes };
+  const hint = $("cHint").value.trim();
+  if (hint) course.number_hint = hint;
+  return { course, errors };
+}
+function fillCourse(c) {
+  $("cName").value = c.name || "";
+  $("cMin").value = c.group_size?.min ?? 2;
+  $("cMax").value = c.group_size?.max ?? c.group_size?.min ?? 2;
+  if (c.timezone) {
+    if (![...tzSelect.options].some((o) => o.value === c.timezone)) tzSelect.add(new Option(c.timezone, c.timezone));
+    tzSelect.value = c.timezone;
+  }
+  $("cHint").value = c.number_hint || "";
+  $("classRows").innerHTML = "";
+  for (const [k, v] of Object.entries(c.classes || {})) addClassRow(k, (v.day || "monday").toLowerCase(), v.ends || "", v.note || "");
+  if (!$("classRows").children.length) addClassRow();
+  refreshSoftModes();
+}
+addClassRow();
+
+// ---------- student files: read here, never uploaded ----------
+async function readText(file) {
+  const buf = new Uint8Array(await file.arrayBuffer());
+  if (buf[0] === 0xff && buf[1] === 0xfe) return new TextDecoder("utf-16le").decode(buf.subarray(2));
+  if (buf[0] === 0xfe && buf[1] === 0xff) return new TextDecoder("utf-16be").decode(buf.subarray(2));
+  try { return new TextDecoder("utf-8", { fatal: true }).decode(buf).replace(/^﻿/, ""); }
+  catch { return new TextDecoder("latin1").decode(buf); }
+}
+const byNumber = (a, b) => a.length - b.length || (a < b ? -1 : a > b ? 1 : 0);
+
+// The same headers scripts/make_roster.py looks for.
+const CANDIDATES = ["nº", "n.º", "n°", "no", "número", "numero", "number", "student number", "student no", "student id", "id"];
+function splitRow(line, delim) {
+  const out = []; let cur = "", quoted = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (quoted) {
+      if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+      else if (ch === '"') quoted = false;
+      else cur += ch;
+    } else if (ch === '"') quoted = true;
+    else if (ch === delim) { out.push(cur); cur = ""; }
+    else cur += ch;
+  }
+  out.push(cur);
+  return out;
+}
+function parseRoster(text, column) {
+  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  if (!lines.length) throw new Error("The file is empty.");
+  if (!column && lines.every((l) => /^\d+$/.test(l))) return { numbers: [...new Set(lines)].sort(byNumber) };
+  const delim = [";", ",", "\t"].map((d) => [d, splitRow(lines[0], d).length]).sort((a, b) => b[1] - a[1])[0][0];
+  const rows = lines.map((l) => splitRow(l, delim));
+  const header = rows[0].map((h) => h.trim());
+  const wanted = column ? [column.toLowerCase()] : CANDIDATES;
+  const col = header.findIndex((h) => wanted.includes(h.toLowerCase()));
+  if (col < 0) return { headers: header.filter(Boolean) };
+  const numbers = new Set();
+  for (const r of rows.slice(1)) {
+    const v = (r[col] || "").trim();
+    if (/^\d+$/.test(v)) numbers.add(v);
+  }
+  return { numbers: [...numbers].sort(byNumber) };
+}
+
+// Mirrors scripts/make_classes.py: the class a file declares on its header line,
+// never its filename. Also takes a file of "number,class" lines.
+const CLASS_LINE = /\b(?:Turno|Class):\s*([A-Za-z]+\s*\d+)/i;
+function parseListing(name, text) {
+  const lines = text.split(/\r?\n/);
+  const header = lines.slice(0, 10).map((l) => l.match(CLASS_LINE)).find(Boolean);
+  if (header) {
+    const cls = header[1].toUpperCase().replace(/\s+/g, "");
+    const numbers = [];
+    for (const line of lines) {
+      const first = line.split("\t", 1)[0].trim();
+      if (/^\d{4,6}$/.test(first)) numbers.push(first);
+    }
+    return numbers.map((n) => [n, cls]);
+  }
+  const pairs = [];
+  for (const line of lines) {
+    const m = line.trim().match(/^(\d{4,6})\s*[,;\t]\s*([A-Za-z]+\s*\d+)\s*$/);
+    if (m) pairs.push([m[1], m[2].toUpperCase().replace(/\s+/g, "")]);
+  }
+  if (!pairs.length) throw new Error(`${name}: no 'Class: …' (or 'Turno: …') line and no 'number,class' lines.`);
+  return pairs;
+}
+
+const students = { roster: null, rosterText: null, classes: null };
+function setStatus(id, text, kind = "") { const el = $(id); el.textContent = text; el.className = "status " + kind; }
+
+async function onRoster(column) {
+  const file = $("roster").files[0];
+  students.roster = null;
+  if (!file) { setStatus("rosterStatus", ""); $("colWrap").hidden = true; return; }
+  try {
+    if (!column) students.rosterText = await readText(file);
+    const res = parseRoster(students.rosterText, column);
+    if (res.headers) {
+      const sel = $("rosterCol");
+      sel.innerHTML = `<option value="">Choose…</option>` + res.headers.map((h) => `<option></option>`).join("");
+      res.headers.forEach((h, i) => { sel.options[i + 1].value = h; sel.options[i + 1].textContent = h; });
+      $("colWrap").hidden = false;
+      setStatus("rosterStatus", "Which column holds the student numbers?", "warn");
+      return;
+    }
+    if (!res.numbers.length) throw new Error("No student numbers found in that column.");
+    students.roster = res.numbers;
+    setStatus("rosterStatus", `${res.numbers.length} student numbers found. Only these numbers will be sent.`, "ok");
+  } catch (e) { setStatus("rosterStatus", e.message, "bad"); }
+}
+$("roster").addEventListener("change", () => { $("colWrap").hidden = true; onRoster(); });
+$("rosterCol").addEventListener("change", (e) => e.target.value && onRoster(e.target.value));
+
+$("listings").addEventListener("change", async () => {
+  students.classes = null;
+  const files = [...$("listings").files];
+  if (!files.length) { setStatus("listingStatus", ""); return; }
+  try {
+    const seen = new Map(), notes = [], counts = {};
+    for (const f of files) {
+      for (const [n, cls] of parseListing(f.name, await readText(f))) {
+        if (seen.has(n) && seen.get(n) !== cls) { notes.push(`${n} is in ${seen.get(n)} and ${cls}; keeping ${seen.get(n)}`); continue; }
+        if (!seen.has(n)) counts[cls] = (counts[cls] || 0) + 1;
+        seen.set(n, cls);
+      }
+    }
+    students.classes = [...seen.entries()].sort((a, b) => byNumber(a[0], b[0]));
+    const summary = Object.entries(counts).sort().map(([c, k]) => `${c}: ${k}`).join(", ");
+    setStatus("listingStatus", `${seen.size} students across ${Object.keys(counts).length} classes (${summary}).` +
+      (notes.length ? ` ${notes.length} listed twice, first class kept.` : ""), notes.length ? "warn" : "ok");
+  } catch (e) { setStatus("listingStatus", e.message, "bad"); }
+});
+
+// ---------- checking the setup token ----------
+const session = { login: null, branch: "main", repoExists: false, assignments: [] };
+function target() {
+  return { org: $("org").value.trim(), repo: $("repo").value.trim() || "registration",
+           token: $("setupToken").value.trim() };
+}
+async function checkSetup() {
+  const { org, repo, token } = target();
+  if (!org) throw new Error("Enter the organization first.");
+  if (!token) throw new Error("Paste the setup token first.");
+  const me = await gh(token, "GET", "/user").catch((e) => {
+    throw new Error(e.status === 401 ? "GitHub doesn't accept that token. Copy it again, or make a new one." : e.message);
+  });
+  session.login = me.login;
+  let role = null;
+  try { role = (await gh(token, "GET", `/user/memberships/orgs/${org}`)).role; }
+  catch (e) {
+    if (e.status === 404) throw new Error(`${me.login} isn't a member of ${org}, or the organization doesn't exist.`);
+    if (e.status === 403) throw new Error(`GitHub refused the token for ${org}: ${e.message}. If the organization approves tokens, approve it under Organization settings → Personal access tokens.`);
+    throw e;
+  }
+  if (role !== "admin") throw new Error(`${me.login} is a member of ${org} but not an owner. Setup needs an owner.`);
+  session.repoExists = await exists(token, `/repos/${org}/${repo}`);
+  let loaded = false;
+  if (session.repoExists) {
+    const info = await gh(token, "GET", `/repos/${org}/${repo}`);
+    session.branch = info.default_branch || "main";
+    try {
+      const f = await gh(token, "GET", `/repos/${org}/${repo}/contents/course.json`);
+      fillCourse(JSON.parse(textFromB64(f.content)));
+      loaded = true;
+    } catch (e) { if (e.status !== 404) throw e; }
+    await loadAssignments();
+  }
+  return `Signed in as ${me.login}, an owner of ${org}. ` +
+    (session.repoExists ? `${org}/${repo} exists${loaded ? "; its course settings are loaded below" : ""}.`
+                        : `${org}/${repo} will be created.`);
+}
+$("checkSetup").onclick = async () => {
+  setStatus("setupStatus", "Checking…");
+  try { setStatus("setupStatus", await checkSetup(), "ok"); }
+  catch (e) { setStatus("setupStatus", e.message, "bad"); }
+};
+
+// ---------- the setup run ----------
+function logger(listId) {
+  const list = $(listId);
+  list.innerHTML = "";
+  return (text, kind = "run") => {
+    const li = document.createElement("li");
+    li.className = kind; li.textContent = text; list.append(li);
+    return (t, k = "ok") => { li.textContent = t; li.className = k; };
+  };
+}
+
+const ORG_SETTINGS = {
+  default_repository_permission: "none",        // members see only what their team is given
+  members_can_create_repositories: false,       // only the bot creates repos
+  members_can_create_public_repositories: false,
+  members_can_create_private_repositories: false,
+  members_can_create_pages: false,
+  members_can_delete_repositories: false,       // students can't delete their work
+  members_can_change_repo_visibility: false,    // no accidentally public solutions
+  members_can_create_teams: false,              // only the bot creates teams
+};
+const LABELS = [
+  { name: "registration", color: "1D76DB", description: "Group registration request" },
+  { name: "registered", color: "0E8A16", description: "Team and repos created" },
+  { name: "class-mismatch", color: "D93F0B", description: "A member's class differs from the faculty listing - check it" },
+];
+
+async function probe(token, path) {
+  // An empty body: GitHub checks permission before it reads the body, so a token
+  // that may do this gets 422 (bad request, nothing created) and one that may not gets 403.
+  try { await gh(token, "POST", path, {}); return "unexpected"; }
+  catch (e) { return e.status === 422 ? "ok" : e.status === 403 ? "denied" : `HTTP ${e.status}: ${e.message}`; }
+}
+
+async function runSetup() {
+  const log = logger("setupLog");
+  $("setupDone").className = "done";
+  const { org, repo, token } = target();
+  const step = log("Checking the setup token");
+  const who = await checkSetup();
+  step(who);
+
+  const { course, errors } = readCourse();
+  if (errors.length) throw new Error(errors.join(" "));
+  const botToken = $("botToken").value.trim();
+
+  // 1. organization
+  let s = log("Locking down what members can do in the organization");
+  const current = await gh(token, "GET", `/orgs/${org}`);
+  const change = Object.fromEntries(Object.entries(ORG_SETTINGS).filter(([k, v]) => current[k] !== v));
+  if (!Object.keys(change).length) s("Organization permissions already locked down");
+  else {
+    const failed = [];
+    try { await gh(token, "PATCH", `/orgs/${org}`, change); }
+    catch {
+      for (const [k, v] of Object.entries(change)) {
+        try { await gh(token, "PATCH", `/orgs/${org}`, { [k]: v }); } catch { failed.push(k); }
+      }
+    }
+    if (failed.length) s(`Organization permissions set, except ${failed.join(", ")} (not available on this plan)`, "warn");
+    else s("Organization permissions locked down: base permission none, members can't create or delete repos or teams");
+  }
+
+  // 2. repository
+  s = log(`Creating ${org}/${repo} from ${TEMPLATE}`);
+  if (session.repoExists) s(`${org}/${repo} already exists`);
+  else {
+    await gh(token, "POST", `/repos/${TEMPLATE}/generate`, {
+      owner: org, name: repo, private: false, include_all_branches: false,
+      description: `Group registration, repos and deadlines for ${course.name} (bedel)`,
+    });
+    for (let i = 0; i < 45; i++) {
+      try { if ((await gh(token, "GET", `/repos/${org}/${repo}/commits?per_page=1`)).length) break; }
+      catch (e) { if (![404, 409].includes(e.status)) throw e; }
+      await sleep(2000);
+    }
+    session.repoExists = true;
+    s(`Created ${org}/${repo}, public so students outside the organization can open the form`);
+  }
+  const info = await gh(token, "GET", `/repos/${org}/${repo}`);
+  session.branch = info.default_branch || "main";
+  if (info.private) log(`${org}/${repo} is private: students who aren't members yet can't see the form. Make it public in its settings.`, "warn");
+
+  // 3. labels
+  s = log("Adding the labels the bot uses");
+  const have = new Set((await paginate(token, `/repos/${org}/${repo}/labels`)).map((l) => l.name));
+  const added = [];
+  for (const l of LABELS) if (!have.has(l.name)) { await gh(token, "POST", `/repos/${org}/${repo}/labels`, l); added.push(l.name); }
+  s(added.length ? `Labels added: ${added.join(", ")}` : "Labels already there");
+
+  // 4. the bot's token, checked before it's stored
+  s = log("Checking the bot's token");
+  if (!botToken) {
+    if (!(await exists(token, `/repos/${org}/${repo}/actions/secrets/ORG_ADMIN_TOKEN`))) {
+      throw new Error("There's no bot token stored yet. Create one in step 5 and paste it.");
+    }
+    s("Keeping the bot token already stored");
+  } else {
+    let bot;
+    try { bot = await gh(botToken, "GET", "/user"); }
+    catch { throw new Error("GitHub doesn't accept the bot's token. Copy it again, or make a new one."); }
+    const checks = [
+      ["create teams (Members)", `/orgs/${org}/teams`],
+      ["create repositories (Administration)", `/orgs/${org}/repos`],
+      ["write files (Contents)", `/repos/${org}/${repo}/git/blobs`],
+      ["mark commits (Commit statuses)", `/repos/${org}/${repo}/statuses/0000000000000000000000000000000000000000`],
+      ["open issues (Issues)", `/repos/${org}/${repo}/issues`],
+    ];
+    const bad = [];
+    for (const [what, path] of checks) {
+      const r = await probe(botToken, path);
+      if (r === "denied") bad.push(what);
+      else if (r !== "ok") log(`Couldn't tell whether the bot's token can ${what}: ${r}`, "warn");
+    }
+    if (bad.length) throw new Error(`The bot's token can't ${bad.join(", ")}. Make a new one with the link in step 5.`);
+    const mine = new Set((await paginate(token, `/orgs/${org}/repos?type=all`)).map((r) => r.name));
+    const its = new Set((await paginate(botToken, `/orgs/${org}/repos?type=all`)).map((r) => r.name));
+    const missing = [...mine].filter((n) => !its.has(n));
+    if (missing.length) throw new Error(`The bot's token reaches only ${mine.size - missing.length} of ${mine.size} repositories. Make a new one with Repository access: All repositories.`);
+    await setSecret(token, org, repo, "ORG_ADMIN_TOKEN", botToken);
+    s(`Bot token (${bot.login}) checked and stored as the secret ORG_ADMIN_TOKEN`);
+  }
+
+  // 5. who may register
+  const testN = Math.max(0, Math.min(20, parseInt($("testN").value, 10) || 0));
+  const tests = Array.from({ length: testN }, (_, i) => `999${String(i + 1).padStart(2, "0")}`);
+  s = log("Storing the roster");
+  if (students.roster) {
+    await setSecret(token, org, repo, "ROSTER", [...students.roster, ...tests].join("\n"));
+    s(`Roster stored as the secret ROSTER: ${students.roster.length} students` + (testN ? ` and ${testN} test students` : ""));
+  } else if (await exists(token, `/repos/${org}/${repo}/actions/secrets/ROSTER`)) {
+    s("Keeping the roster already stored" + (testN ? " (choose the roster file again to add test students)" : ""), testN ? "warn" : "ok");
+  } else {
+    throw new Error("No roster yet: choose the roster file in step 4, so the bot knows who may register.");
+  }
+  if (students.classes) {
+    s = log("Storing the class listings");
+    await setSecret(token, org, repo, "CLASSES", students.classes.map(([n, c]) => `${n},${c}`).join("\n"));
+    s(`Classes stored as the secret CLASSES: ${students.classes.length} students`);
+  }
+
+  // 6. course.json last: the workflows stay idle until it's there, so they never
+  //    start before the secrets they need.
+  s = log("Writing course.json");
+  const text = JSON.stringify(course, null, 2) + "\n";
+  let sha = null, same = false;
+  try {
+    const f = await gh(token, "GET", `/repos/${org}/${repo}/contents/course.json`);
+    sha = f.sha; same = textFromB64(f.content) === text;
+  } catch (e) { if (e.status !== 404) throw e; }
+  let headSha = null;
+  if (same) s("course.json already up to date");
+  else {
+    const res = await gh(token, "PUT", `/repos/${org}/${repo}/contents/course.json`, {
+      message: sha ? `Update the course: ${course.name}` : `Set up the course: ${course.name}`,
+      content: b64FromText(text), ...(sha ? { sha } : {}), branch: session.branch,
+    });
+    headSha = res.commit.sha;
+    s(sha ? "course.json updated" : "course.json written");
+  }
+
+  // 7. the students' README and form are generated by the Course files workflow
+  s = log("Generating the students' page and form (a GitHub Actions run, about a minute)");
+  const formPath = `/repos/${org}/${repo}/contents/.github/ISSUE_TEMPLATE/register.yml`;
+  if (same && await exists(token, formPath)) s("Students' page and form already generated");
+  else {
+    const since = Date.now() - 60000;
+    if (!headSha) await gh(token, "POST", `/repos/${org}/${repo}/actions/workflows/course.yml/dispatches`, { ref: session.branch });
+    const run = await waitForRun(token, org, repo, "course.yml", (r) =>
+      headSha ? r.head_sha === headSha : Date.parse(r.created_at) >= since, (u) => s(`Generating the students' page and form: ${u}`, "run"));
+    if (run.conclusion !== "success") throw new Error(`The Course files workflow ${run.conclusion}: ${run.html_url}`);
+    s("Students' page and form generated");
+  }
+
+  const link = `https://github.com/${org}/${repo}/issues/new?template=register.yml`;
+  const done = $("setupDone");
+  done.innerHTML = `<strong>Your course is ready.</strong> Give your students this link:<br><a></a><br><br>
+    Try it first with two accounts of your own${testN ? ` and the test numbers ${tests.slice(0, 2).join(" and ")}` : " (set Test students to 2 and run this again)"}.
+    The repository is <a></a>; your settings live in its <code>course.json</code>.`;
+  const [a1, a2] = done.querySelectorAll("a");
+  a1.href = a1.textContent = link;
+  a2.href = `https://github.com/${org}/${repo}`; a2.textContent = `${org}/${repo}`;
+  done.className = "done show";
+  await loadAssignments();
+}
+
+async function waitForRun(token, org, repo, workflow, match, update, minutes = 5) {
+  const until = Date.now() + minutes * 60000;
+  let run = null;
+  while (Date.now() < until) {
+    const runs = await gh(token, "GET", `/repos/${org}/${repo}/actions/workflows/${workflow}/runs?per_page=10`);
+    run = (runs.workflow_runs || []).find(match) || null;
+    if (run) {
+      update(`${run.status.replace("_", " ")} — ${run.html_url}`);
+      if (run.status === "completed") return run;
+    } else if (Date.now() > until - (minutes - 1) * 60000) {
+      update(`waiting for GitHub Actions to start it… (check that Actions is enabled for ${org})`);
+    }
+    await sleep(4000);
+  }
+  throw new Error(run ? `Still running after ${minutes} minutes: ${run.html_url}` :
+    `GitHub Actions never started ${workflow}. Check that Actions is enabled in the organization's settings.`);
+}
+
+$("runSetup").onclick = async () => {
+  const btn = $("runSetup"); btn.disabled = true;
+  try { await runSetup(); }
+  catch (e) { const li = document.createElement("li"); li.className = "bad"; li.textContent = e.message; $("setupLog").append(li); }
+  finally {
+    for (const li of $("setupLog").querySelectorAll("li.run")) li.className = "warn";
+    btn.disabled = false;
+  }
+};
+
+// ---------- releasing an assignment ----------
+async function loadAssignments() {
+  const { org, repo, token } = target();
+  session.assignments = [];
+  try {
+    const items = await gh(token, "GET", `/repos/${org}/${repo}/contents/assignments`);
+    session.assignments = items.filter((i) => i.name.endsWith(".json")).map((i) => i.name.slice(0, -5)).sort();
+  } catch (e) { if (e.status !== 404) return; }
+  const sel = $("aCarry");
+  sel.length = 1;
+  for (const a of session.assignments) sel.add(new Option(a, a));
+}
+let softModeChosen = false;   // once someone picks, the page stops choosing for them
+function refreshSoftModes() {
+  const hasClasses = [...$("classRows").children].some((tr) => tr.querySelector("input").value.trim());
+  const opt = $("aSoftMode").options[0];
+  opt.disabled = !hasClasses;
+  if (!hasClasses && $("aSoftMode").value === "week") $("aSoftMode").value = "date";
+  else if (hasClasses && !softModeChosen) $("aSoftMode").value = "week";
+  const mode = $("aSoftMode").value;
+  $("aSoftWeekWrap").hidden = mode !== "week";
+  $("aSoftDateWrap").hidden = mode !== "date";
+}
+$("aSoftMode").addEventListener("change", () => { softModeChosen = true; refreshSoftModes(); });
+refreshSoftModes();
+$("aNoHard").addEventListener("change", () => { $("aHard").disabled = $("aNoHard").checked; });
+
+function folderFiles() {
+  return [...$("aFolder").files].map((f) => ({ file: f, path: f.webkitRelativePath.split("/").slice(1).join("/") }))
+    .filter(({ path }) => path && !path.split("/").some((p) => SKIP.has(p)));
+}
+$("aFolder").addEventListener("change", () => {
+  const files = folderFiles();
+  const big = files.filter((f) => f.file.size > MAX_BLOB).length;
+  setStatus("folderStatus", files.length ? `${files.length} files${big ? `, ${big} over 10 MB will be skipped` : ""}. ` +
+    "Browsers don't pass on file permissions, so scripts arrive without their executable bit." : "", big ? "warn" : "");
+});
+
+async function pushFolder(token, org, repo, files, message) {
+  const info = await gh(token, "GET", `/repos/${org}/${repo}`);
+  const branch = info.default_branch || "main";
+  let parents = [];
+  try { parents = [(await gh(token, "GET", `/repos/${org}/${repo}/git/ref/heads/${branch}`)).object.sha]; }
+  catch (e) { if (![404, 409].includes(e.status)) throw e; }
+  const tree = [];
+  for (const { file, path } of files) {
+    if (file.size > MAX_BLOB) continue;
+    const blob = await gh(token, "POST", `/repos/${org}/${repo}/git/blobs`,
+      { content: b64FromBytes(new Uint8Array(await file.arrayBuffer())), encoding: "base64" });
+    tree.push({ path, mode: "100644", type: "blob", sha: blob.sha });
+  }
+  // A whole new tree, not on top of the old one: the repository becomes exactly the folder.
+  const t = await gh(token, "POST", `/repos/${org}/${repo}/git/trees`, { tree });
+  const c = await gh(token, "POST", `/repos/${org}/${repo}/git/commits`, { message, tree: t.sha, parents });
+  if (parents.length) await gh(token, "PATCH", `/repos/${org}/${repo}/git/refs/heads/${branch}`, { sha: c.sha });
+  else await gh(token, "POST", `/repos/${org}/${repo}/git/refs`, { ref: `refs/heads/${branch}`, sha: c.sha });
+  return tree.length;
+}
+const asDeadline = (v) => v.replace("T", " ");
+
+async function release() {
+  const log = logger("releaseLog");
+  const { org, repo, token } = target();
+  if (!org || !token) throw new Error("Fill in the organization and the setup token above first.");
+  const name = $("aName").value.trim();
+  if (!ASSIGNMENT_RE.test(name)) throw new Error("The name must be lowercase letters, digits, - and _, like a1.");
+  if (!session.login) { const s = log("Checking the setup token"); s(await checkSetup()); }
+  const isNew = !session.assignments.includes(name);
+  const mode = $("aSoftMode").value;
+  const inputs = { name };
+  if (mode === "week" && $("aSoftWeek").value) inputs.soft_week = $("aSoftWeek").value;
+  else if (mode === "date" && $("aSoft").value) inputs.soft = asDeadline($("aSoft").value);
+  else if (mode === "none") inputs.soft = "none";
+  if ($("aNoHard").checked) inputs.hard = "none";
+  else if ($("aHard").value) inputs.hard = asDeadline($("aHard").value);
+  if (isNew && !inputs.soft_week && !inputs.soft) throw new Error(`${name} is new, so it needs a soft deadline (or None).`);
+  if (isNew && !inputs.hard) throw new Error(`${name} is new, so it needs a hard deadline (or Never lock).`);
+  if ($("aCarry").value) {
+    if ($("aCarry").value === name) throw new Error("Carry over from an earlier assignment, not this one.");
+    inputs.carry_over = $("aCarry").value;
+  }
+  const dry = $("aDry").checked;
+  inputs.dry_run = dry ? "true" : "false";
+
+  const files = folderFiles();
+  const template = $("aTemplate").value.trim() || `${name}-template`;
+  inputs.template = template;
+  if (files.length) {
+    let s = log(`Putting your ${files.length} starting files in ${org}/${template}`);
+    if (dry) s(`Would put ${files.length} starting files in ${org}/${template} (dry run)`, "ok");
+    else {
+      if (!(await exists(token, `/repos/${org}/${template}`))) {
+        await gh(token, "POST", `/orgs/${org}/repos`, { name: template, private: true, auto_init: true,
+          description: `Starting files for ${name}` });
+        for (let i = 0; i < 20; i++) {
+          try { await gh(token, "GET", `/repos/${org}/${template}/git/ref/heads/main`); break; }
+          catch { await sleep(1500); }
+        }
+      }
+      const n = await pushFolder(token, org, template, files, `Starting files for ${name}`);
+      s(`${n} starting files in ${org}/${template}`);
+    }
+  } else if (!dry && !(await exists(token, `/repos/${org}/${template}`))) {
+    throw new Error(`${org}/${template} doesn't exist. Choose a folder with the starting files, or name a repository that has them.`);
+  }
+
+  let s = log(dry ? "Asking GitHub Actions for a dry run" : `Releasing ${name}`);
+  const since = Date.now() - 10000;
+  await gh(token, "POST", `/repos/${org}/${repo}/actions/workflows/assignment.yml/dispatches`, { ref: session.branch, inputs });
+  const run = await waitForRun(token, org, repo, "assignment.yml",
+    (r) => r.event === "workflow_dispatch" && Date.parse(r.created_at) >= since, (u) => s(`Release: ${u}`, "run"), 15);
+  if (run.conclusion !== "success") throw new Error(`The release ${run.conclusion}. What went wrong is in its log: ${run.html_url}`);
+  s(dry ? `Dry run finished. What would happen is in its log: ${run.html_url}`
+        : `${name} released: every registered group has its repository and an issue about it. Log: ${run.html_url}`);
+  await loadAssignments();
+}
+$("runRelease").onclick = async () => {
+  const btn = $("runRelease"); btn.disabled = true;
+  try { await release(); }
+  catch (e) { const li = document.createElement("li"); li.className = "bad"; li.textContent = e.message; $("releaseLog").append(li); }
+  finally {
+    for (const li of $("releaseLog").querySelectorAll("li.run")) li.className = "warn";
+    btn.disabled = false;
+  }
+};
+
+// For the page's own tests: the pure parts, without a network.
+window.bedel = { parseRoster, parseListing, tokenUrl, readCourse, fillCourse, b64FromText, textFromB64, sodium,
+                 SETUP_PERMISSIONS, BOT_PERMISSIONS };
+</script>
+</body>
+</html>

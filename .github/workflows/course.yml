@@ -1,0 +1,52 @@
+name: Course files
+
+# Regenerates what students see - .github/README.md and the registration form -
+# whenever course.json changes, so editing that one file (by hand, from GitHub's
+# web editor or from the bedel setup page) is all a change takes.
+# scripts/setup/06_course.sh does the same on your machine; when it already has,
+# this finds nothing to do.
+
+on:
+  push:
+    branches: [main]
+    paths: [course.json]
+  workflow_dispatch:
+
+concurrency:
+  group: course-files
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # bedel itself, or a copy not yet set up for a course, has no course.json.
+      - name: Set up for a course?
+        id: course
+        run: |
+          if [ -f course.json ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::No course.json yet - run scripts/setup.sh to set this repo up for a course."
+          fi
+      - uses: actions/setup-python@v5
+        if: steps.course.outputs.ready
+        with:
+          python-version: "3.12"
+      - name: Generate and commit
+        if: steps.course.outputs.ready
+        run: |
+          python scripts/setup/course.py render --repo "$GITHUB_REPOSITORY"
+          git add -- .github/README.md .github/ISSUE_TEMPLATE
+          if git diff --cached --quiet; then
+            echo "Already up to date."
+            exit 0
+          fi
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q -m "Generate the students' README and form from course.json"
+          git push

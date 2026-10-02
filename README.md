@@ -1,9 +1,12 @@
 # bedel
 
 **Group registration, per-assignment repositories and deadlines for a course on
-GitHub, run from one repository in your own organization.** A small, self-hosted
-alternative to GitHub Classroom and classroom50, built on nothing but issues,
-teams and GitHub Actions.
+GitHub, run from one repository in your own organization.** A flexible,
+self-hosted alternative to GitHub Classroom and classroom50, built on nothing but
+issues, teams and GitHub Actions — so every workflow, rule and form is a file you
+can change.
+
+**[Set up a course in your browser →](https://ajccosta.github.io/bedel/)**
 
 *Bedel* is Portuguese for the university porter who keeps the rooms and the
 timetable: he lets you in, and he locks the door when time is up.
@@ -45,8 +48,15 @@ deadlines are worked out) is code you can read and change.
 
 ## Starting a course
 
-You need an organization for the course that you own, `gh` (the GitHub CLI)
-logged in, `git`, and Python 3.9 or later.
+**In your browser:** [ajccosta.github.io/bedel](https://ajccosta.github.io/bedel/)
+walks you through it. You need an organization for the course that you own; the
+page creates the course's repository from bedel, stores your roster and the bot's
+token as encrypted secrets, and writes `course.json`. It has no server: it talks
+to GitHub's API straight from your browser. It also releases assignments, which
+you can equally do from the course repository's **Actions** tab.
+
+**From a terminal:** you need `gh` (the GitHub CLI) logged in, `git`, and
+Python 3.9 or later.
 
 ```sh
 git clone https://github.com/ajccosta/bedel registration
@@ -61,9 +71,9 @@ the roster, the course itself (name, group size, time zone, classes) and a
 final check. It ends with the link to give your students.
 
 The clone keeps bedel as the `upstream` remote, so later fixes are one command
-away: `git pull upstream main`. **Use this template** on GitHub works too, but
-then the copy has no history in common with bedel, and updates have to be
-merged in by hand.
+away: `git pull upstream main`. A course set up from the browser, or with **Use
+this template**, starts a history of its own instead, so bedel's later changes
+have to be merged in by hand.
 
 Everything about the course lives in `course.json`; everything else is the same
 for every course. The full guide, including assignments, deadlines, testing and

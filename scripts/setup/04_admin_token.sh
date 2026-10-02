@@ -62,10 +62,12 @@ repo_exists "$TARGET" || die "Repository $TARGET not found. Run step 2 first."
 # use. Checked endpoint by endpoint against GitHub's permission tables:
 #   administration  create repos, from templates too; grant teams access to them
 #   contents        assignment files, tags, the push archive, class claims
+#   issues          announce a released assignment in each group's repo (the
+#                   registration issues themselves use the workflow's own token)
 #   statuses        mark commits pushed after the soft deadline
+#   workflows       starting files or carried-over work that contain workflows
 #   members         create teams, add students (which invites them)
-# Not issues: the bot comments with the workflow's own GITHUB_TOKEN.
-PERMISSIONS="administration=write&contents=write&statuses=write&members=write"
+PERMISSIONS="administration=write&contents=write&issues=write&statuses=write&workflows=write&members=write"
 
 # Parentheses are percent-encoded: terminals stop auto-linking a URL at an
 # unbalanced ")", which would hand you a truncated link. GitHub caps the name
@@ -118,8 +120,9 @@ ${B}Create the admin token${R}
      don't exist yet.
   3. Check the ${B}Permissions${R} box lists these (GitHub adds Metadata,
      read-only, by itself):
-       Administration, Contents, Commit statuses   Read and write
-       Members (organization)                       Read and write
+       Administration, Contents, Issues,
+       Commit statuses, Workflows                  Read and write
+       Members (organization)                      Read and write
   4. Click ${B}Generate token${R} and copy the github_pat_... value. GitHub shows
      it once; if you lose it, generate a new one.
 
@@ -176,6 +179,7 @@ if [ -z "$scopes" ]; then
     probe "create repositories (Administration)" POST "/orgs/$ORG/repos"
     probe "write contents (Contents)"           POST "/repos/$TARGET/git/blobs"
     probe "mark commits (Commit statuses)"      POST "/repos/$TARGET/statuses/0000000000000000000000000000000000000000"
+    probe "open issues (Issues)"                POST "/repos/$TARGET/issues"
 
     # "All repositories" can't be read off a token either. What can be seen is
     # whether it reaches every repo you, the owner, can see right now.

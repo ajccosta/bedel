@@ -39,9 +39,16 @@ bedel's updates*). Step 6 asks for the course details and writes `course.json`. 
 file is on the default branch the workflows start, see there is no course, and stop, so a
 half-set-up repo never fails or creates anything.
 
-GitHub's **Use this template** button on bedel works too, but the copy starts a history of
-its own, and pulling bedel's updates later means merging two unrelated histories by hand.
-The clone is the better start.
+**Or in a browser:** [the setup page](https://ajccosta.github.io/bedel/) does the same
+steps through GitHub's API: organization permissions, the repository (created from bedel's
+template), labels, the roster and class secrets, the bot's token (checked with the same
+probes as step 4) and `course.json`. It runs entirely in the browser; student lists are
+parsed there and only the numbers are sent, encrypted. It needs two fine-grained tokens,
+one for itself (7 days) and one for the bot, both from pre-filled links.
+
+GitHub's **Use this template** button, which is what the page uses, starts the copy's
+history afresh, so pulling bedel's updates later means merging two unrelated histories
+by hand. A clone keeps them related.
 
 ## Setup (once per course edition)
 
@@ -91,9 +98,10 @@ its own. All of them take the org as the first argument and have a `--help`.
    GitHub has no API for creating tokens, so this is the one step with a browser in
    it. The script offers to open a **fine-grained** token page with the name, `ORG` as
    owner, the expiry (180 days by default; `--days` changes it, up to 366) and the four
-   permissions already filled in: Administration, Contents, Commit statuses
-   (repository) and Members (organization), all read and write. No Issues: the bot
-   comments with the workflow's own token.
+   permissions already filled in: Administration, Contents, Issues, Commit statuses and
+   Workflows (repository) and Members (organization), all read and write. Issues is for
+   the issue that announces an assignment in each group's repo; Workflows for starting
+   files or carried-over work that contain workflow files.
 
    One field you set by hand: **Repository access → All repositories**. GitHub's
    pre-fill link has no parameter for it, and it must be All, since only All covers
@@ -168,7 +176,14 @@ its own. All of them take the org as the first argument and have a `--help`.
 
 ## Assignments
 
-Create one when you release it. Nothing about assignments is set up in advance, so you
+**From GitHub:** the *Release an assignment* workflow in the course repository's **Actions**
+tab (or the setup page, which runs it for you) does everything below with the bot's token.
+Its form asks for the name, the repository holding the starting files (default
+`<name>-template`), the deadlines and an optional assignment to carry over from; tick
+*dry run* to see what would happen. The setup page can upload a folder of starting files
+for you.
+
+**From a terminal:** create one when you release it. Nothing about assignments is set up in advance, so you
 don't need to know how many there will be.
 
 ```
@@ -642,6 +657,9 @@ scripts/setup/06_course.sh --min 2 --max 3      # or no flags, to be asked
 
 Group size, classes, name and time zone all change the same way: the step rewrites
 `course.json`, regenerates the students' README and form from it, and commits and pushes.
+Editing `course.json` anywhere else — GitHub's web editor, the setup page — works too: the
+*Course files* workflow (`.github/workflows/course.yml`) regenerates the students' files
+whenever `course.json` changes on the default branch.
 Don't edit the generated files by hand. The bot finds a member by looking the form's label
 up verbatim, so a slot labelled `Member 3 – student number` (en dash) or
 `Member 3 - Student Number` is silently ignored and the group registers one member short.
