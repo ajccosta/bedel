@@ -88,6 +88,8 @@ async function findOrg() {
   catch (e) {
     setStatus("orgStatus", e.status === 404
       ? `There's no organization called ${name} on GitHub yet. Create it with the button above, then find it here.`
+      : [403, 429].includes(e.status)
+      ? "GitHub limits how often a page can look things up without a token. Wait a few minutes and try again."
       : e.message, "bad");
     return false;
   }
