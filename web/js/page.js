@@ -8,10 +8,12 @@ export function initPage() {
     a.href = `https://github.com/${TEMPLATE}${a.dataset.template}`;
     if (a.dataset.label !== undefined) a.textContent = `github.com/${TEMPLATE}`;
   }
+  // Light by default; dark is the reader's choice, remembered in this browser.
+  const root = document.documentElement;
+  try { if (localStorage.getItem("theme") === "dark") root.dataset.theme = "dark"; } catch {}
   $("themeBtn").onclick = () => {
-    const root = document.documentElement;
-    const dark = root.dataset.theme ? root.dataset.theme === "dark"
-                                    : matchMedia("(prefers-color-scheme: dark)").matches;
-    root.dataset.theme = dark ? "light" : "dark";
+    const dark = root.dataset.theme !== "dark";
+    if (dark) root.dataset.theme = "dark"; else delete root.dataset.theme;
+    try { localStorage.setItem("theme", dark ? "dark" : "light"); } catch {}
   };
 }
