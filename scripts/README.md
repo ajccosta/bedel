@@ -739,12 +739,23 @@ gh workflow run pages.yml -R ORG/registration
 It opens by asking whether you're a student or a teacher, and remembers the answer in that
 browser. **Students** see the overview, the assignments and their deadlines, and *My group*:
 with a read-only key of their own, each of their group's repositories with its commits,
-who made them, the last push and how many commits came after their soft deadline. GitHub
+the days they worked on it, a chart of commits per day against their deadlines, who made
+them, the last push and how many commits came after their soft deadline. GitHub
 gives that key the student's own access, so it can't see any other group's repositories.
 For students' keys to work without you approving each one, choose *Do not require
 administrator approval* under the organization's **Settings → Personal access tokens**,
 once. **Teachers** see everything, and change things with a token as above. The choice
 protects nothing on its own: every change still needs an owner's token.
+
+Under each assignment, *Each group's progress* shows, per group: its classes, a chart of
+commits per day with the soft and hard deadlines marked, commits, days with work, the last
+work and how long it's been quiet, commits after the group's soft deadline, the share made
+in the final two days, and each member's share. Above it: how many groups have started,
+how many have been quiet for a week, how many have one member doing nearly all of it, and
+the same per class. The table sorts by any column and downloads as CSV. It reads
+`push-log`, so its times are GitHub's and it lags by up to 30 minutes; a group not in
+`push-log` yet falls back to its commits' own dates, and the page says so. It's activity,
+not progress: use it to find a group to talk to, never to grade.
 
 So that students' visits don't each spend GitHub's 60-an-hour allowance for pages without
 a token, which a class on one network would use up in minutes, the page is published with

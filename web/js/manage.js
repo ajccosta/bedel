@@ -284,7 +284,7 @@ async function showMine() {
   setStatus("studentStatus", "Looking…");
   try {
     const data = await loadMine($("studentToken").value.trim(), defsNow);
-    renderMine($("mineOut"), data, when);
+    renderMine($("mineOut"), data, when, course?.timezone || "UTC");
     $("mineSignin").hidden = true;
     setStatus("studentStatus", "");
   } catch (e) {

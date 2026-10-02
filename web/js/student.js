@@ -5,6 +5,7 @@ import { gh, paginate, GitHubError } from "./github.js";
 import { tokenUrl } from "./tokens.js";
 import { ctx } from "./state.js";
 import { stateOf } from "./asgpage.js";
+import { classesFromReply, dayOf, measure, perDay, softFor, sparkline } from "./progress.js";
 
 // Contents: read is all it asks for; GitHub adds Metadata: read, which every token has.
 export const STUDENT_PERMISSIONS = { contents: "read" };
@@ -72,22 +73,11 @@ async function groupClasses(token, org, repo, group) {
     const issue = issues.find((i) => i.title.endsWith(group));
     if (!issue) return [];
     const comments = await paginate(token, `/repos/${org}/${repo}/issues/${issue.number}/comments`);
-    const reply = comments.reverse().find((c) => c.body.includes("registered as"));
-    return [...new Set([...(reply?.body || "").matchAll(/→ \*\*([A-Za-z0-9]+)\*\*/g)].map((x) => x[1]))];
+    return classesFromReply(comments);
   } catch { return []; }
 }
 
-// The default rule (rules.py): a week from the earliest member's session, so the
-// earliest of the group's classes. A date set by hand applies to everyone.
-function softFor(d, classes) {
-  const byClass = d.soft_by_class || {};
-  if (!d.soft_manual && classes.length && classes.some((c) => byClass[c])) {
-    return classes.map((c) => byClass[c]).filter(Boolean).sort((a, b) => Date.parse(a) - Date.parse(b))[0];
-  }
-  return d.soft_deadline || null;
-}
-
-export function renderMine(box, data, when) {
+export function renderMine(box, data, when, tz = "UTC") {
   box.innerHTML = "";
   const intro = el("p", undefined, "sub");
   intro.append(`Group ${data.group}`, data.classes.length ? `, class ${data.classes.join(" and ")}` : "", `. Seen with ${data.login}'s key.`);
@@ -103,26 +93,41 @@ export function renderMine(box, data, when) {
     meta.append(linkTo(r.html_url, r.name));
     card.append(meta);
 
-    const late = soft ? commits.filter((c) => Date.parse(c.commit.committer?.date || c.commit.author?.date) > Date.parse(soft)).length : 0;
     const pushed = r.pushed_at && Date.parse(r.pushed_at) - Date.parse(r.created_at) > 60000 ? r.pushed_at : null;
+    const dated = commits.map((c) => ({ at: Date.parse(c.commit.committer?.date || c.commit.author?.date),
+                                        who: c.author?.login || c.commit.author?.name || "unknown" }));
+    const m = measure(dated, { since: Date.parse(r.created_at), soft: soft && Date.parse(soft), own: d.own_work, tz,
+                               hard: d.hard_deadline && Date.parse(d.hard_deadline) });
     const stats = el("div", undefined, "stats");
     const stat = (n, label) => { const s = el("div", undefined, "stat"); s.append(el("strong", String(n)), el("span", label)); stats.append(s); };
-    stat(commits.length, commits.length === 1 ? "commit" : "commits");
+    stat(m.commits, m.commits === 1 ? "commit of your own" : "commits of your own");
+    stat(m.days, m.days === 1 ? "day with work" : "days with work");
     stat(pushed ? when(pushed) : "—", pushed ? "last push" : "nothing pushed yet");
-    if (soft) stat(late, late === 1 ? "commit after the soft deadline" : "commits after the soft deadline");
+    const open = !d.hard_deadline || Date.now() < Date.parse(d.hard_deadline);
+    if (pushed && open && m.quiet >= 2) stat(m.quiet, "days since the last commit");
+    if (soft) stat(m.late, m.late === 1 ? "commit after the soft deadline" : "commits after the soft deadline");
     card.append(stats);
+
+    if (m.started) {
+      const work = dated.filter((c) => d.own_work || c.at > Date.parse(r.created_at) + 5 * 60000);
+      const from = Math.min(Date.parse(d.created || r.created_at), ...work.map((c) => c.at));
+      const to = d.hard_deadline ? Math.min(Date.now(), Date.parse(d.hard_deadline)) : Date.now();
+      const marks = [];
+      if (soft) marks.push({ day: dayOf(Date.parse(soft), tz), kind: "soft", label: `Your soft deadline: ${when(soft)}` });
+      if (d.hard_deadline) marks.push({ day: dayOf(Date.parse(d.hard_deadline), tz), kind: "hard", label: `Hard deadline: ${when(d.hard_deadline)}` });
+      const fig = el("figure", undefined, "activity");
+      fig.append(sparkline(perDay(work, from, to, tz), marks, { width: 480, height: 48 }),
+                 el("figcaption", "Commits per day. The lines are your soft and hard deadlines."));
+      card.append(el("h4", "Activity"), fig);
+    }
 
     const dl = el("dl", undefined, "deadlines");
     dl.append(el("dt", "Your soft deadline"), el("dd", soft ? when(soft) : "None"),
               el("dt", "Hard deadline"), el("dd", d.hard_deadline ? `${when(d.hard_deadline)} — the repository locks` : "Never locks"));
     card.append(dl);
 
-    if (commits.length) {
-      const counts = {};
-      for (const c of commits) {
-        const who = c.author?.login || c.commit.author?.name || "unknown";
-        counts[who] = (counts[who] || 0) + 1;
-      }
+    if (m.started) {
+      const counts = m.whos;
       const max = Math.max(...Object.values(counts));
       const list = el("ul", undefined, "bars");
       for (const [who, n] of Object.entries(counts).sort((a, b) => b[1] - a[1])) {
