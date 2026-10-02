@@ -1,5 +1,7 @@
 // Reading the student lists. Everything here runs on the files in the browser;
 // only the numbers (and classes) it returns are ever sent anywhere.
+import { $, setStatus } from "./dom.js";
+import { students } from "./state.js";
 
 export async function readText(file) {
   const buf = new Uint8Array(await file.arrayBuffer());
@@ -89,4 +91,50 @@ export function mergeListings(listings) {
     }
   }
   return { pairs: [...seen.entries()].sort((a, b) => byNumber(a[0], b[0])), counts, twice };
+}
+
+// Wires the roster and class-listing file inputs (#roster, #rosterCol, #listings)
+// into `students`. The files are read here, in the browser; only the numbers
+// and classes found in them are ever sent anywhere.
+export function initStudentInputs() {
+  async function onRoster(column) {
+    const file = $("roster").files[0];
+    students.roster = null;
+    if (!file) { setStatus("rosterStatus", ""); $("colWrap").hidden = true; return; }
+    try {
+      if (!column) students.rosterText = await readText(file);
+      const res = parseRoster(students.rosterText, column);
+      if (res.headers) {
+        const sel = $("rosterCol");
+        sel.length = 0;
+        sel.add(new Option("Choose…", ""));
+        for (const h of res.headers) sel.add(new Option(h, h));
+        $("colWrap").hidden = false;
+        setStatus("rosterStatus", "Which column holds the student numbers?", "warn");
+        return;
+      }
+      if (!res.numbers.length) throw new Error("No student numbers found in that column.");
+      students.roster = res.numbers;
+      setStatus("rosterStatus", `${res.numbers.length} student numbers found. Only these numbers will be sent.`, "ok");
+    } catch (e) { setStatus("rosterStatus", e.message, "bad"); }
+    document.dispatchEvent(new Event("students-changed"));
+  }
+  $("roster").addEventListener("change", () => { $("colWrap").hidden = true; onRoster(); });
+  $("rosterCol").addEventListener("change", (e) => e.target.value && onRoster(e.target.value));
+
+  $("listings").addEventListener("change", async () => {
+    students.classes = null;
+    const files = [...$("listings").files];
+    if (!files.length) { setStatus("listingStatus", ""); return; }
+    try {
+      const listings = [];
+      for (const f of files) listings.push(parseListing(f.name, await readText(f)));
+      const { pairs, counts, twice } = mergeListings(listings);
+      students.classes = pairs;
+      const summary = Object.entries(counts).sort().map(([c, k]) => `${c}: ${k}`).join(", ");
+      setStatus("listingStatus", `${pairs.length} students across ${Object.keys(counts).length} classes (${summary}).` +
+        (twice ? ` ${twice} listed twice, first class kept.` : ""), twice ? "warn" : "ok");
+    } catch (e) { setStatus("listingStatus", e.message, "bad"); }
+    document.dispatchEvent(new Event("students-changed"));
+  });
 }

@@ -3,45 +3,101 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- This page may load files from its own site and talk to api.github.com, and
+     nothing else: your browser enforces that, whatever the scripts try. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data: https://avatars.githubusercontent.com; connect-src 'self' https://api.github.com; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
 <title>bedel — run your course on GitHub</title>
-<meta name="description" content="Group registration, one repository per group per assignment, and deadlines enforced on the minute. A flexible, self-hosted alternative to GitHub Classroom and classroom50: every workflow, rule and form is a file you own.">
+<meta name="description" content="Group registration, one repository per group per assignment, and deadlines enforced on the minute. A flexible alternative to GitHub Classroom and Classroom 50 (classroom50): every workflow, rule and form is a file you own.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f6f4f'/%3E%3Ccircle cx='12' cy='16' r='5' fill='none' stroke='white' stroke-width='3'/%3E%3Cpath d='M17 16h10M23 16v4M27 16v3' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 <div class="wrap">
   <nav>
-    <a class="brand" href="#">
+    <a class="brand" href="./">
       <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><circle cx="12" cy="16" r="5" fill="none" stroke="var(--accent-ink)" stroke-width="3"/><path d="M17 16h10M23 16v4M27 16v3" stroke="var(--accent-ink)" stroke-width="3" stroke-linecap="round"/></svg>
       bedel
     </a>
     <div class="links">
+      <a href="#compare">bedel or Classroom 50</a>
       <a href="#why">Why bedel</a>
-      <a href="#setup">Set up a course</a>
-      <a href="#assignments">Assignments</a>
-      <a id="repoLink" href="https://github.com/ajccosta/bedel">GitHub</a>
+      <a href="setup.html">Set up a course</a>
+      <a data-template="" href="https://github.com/ajccosta/bedel">GitHub</a>
       <button class="theme" id="themeBtn" type="button" aria-label="Switch colour theme">◐</button>
     </div>
   </nav>
+</div>
 
+<div class="wrap">
   <header class="hero">
-    <span class="eyebrow">An alternative to GitHub Classroom and classroom50</span>
+    <span class="eyebrow">GitHub Classroom has retired</span>
     <h1>Run your course on GitHub, your way.</h1>
     <p class="lead">bedel signs up your students' groups, gives each group its own repository for every
       assignment, and enforces your deadlines to the minute. It all runs from one repository in your own
       organization, so every workflow, rule and form is a file you can read and change.</p>
     <div class="cta">
-      <a class="btn primary" href="#setup">Set up a course in your browser</a>
-      <a class="btn" id="codeLink" href="https://github.com/ajccosta/bedel">See the code</a>
+      <a class="btn primary" href="setup.html">Set up a course</a>
+      <a class="btn" href="#compare">bedel or Classroom 50?</a>
     </div>
   </header>
 </div>
 
+<section id="compare">
+  <div class="wrap">
+    <h2>After GitHub Classroom</h2>
+    <p class="sub">GitHub <a href="https://github.blog/changelog/2026-08-27-github-classroom-deprecated/">retired GitHub Classroom</a>
+      on 28 August 2026 and deleted its data a week later, pointing teachers to partner tools such as Classroom 50.
+      So the choice now is mostly between Classroom 50, an app that runs your classroom for you, and bedel, a repository you own.</p>
+    <div class="table-scroll">
+      <table class="compare">
+        <thead><tr><th></th><th>bedel</th><th>Classroom 50</th><th class="gone">GitHub Classroom</th></tr></thead>
+        <tbody>
+          <tr><td>Available</td>
+            <td>Yes, free</td>
+            <td>Yes, free and open source (GPL-3.0), from the Fifty Foundation</td>
+            <td class="gone">Retired 28 August 2026; its data was deleted on 4 September</td></tr>
+          <tr><td>GitHub plan</td>
+            <td>A free organization is enough</td>
+            <td>An organization on the Team or Enterprise plan (free for verified teachers)</td>
+            <td class="gone">—</td></tr>
+          <tr><td>Where it runs</td>
+            <td>GitHub Actions, in one repository in your organization. No app, no server.</td>
+            <td>A web app or <code>gh</code> extensions, with background work in GitHub Actions in your organization. Some steps happen only while a teacher is signed in.</td>
+            <td class="gone">GitHub's hosted service</td></tr>
+          <tr><td>Changing how it works</td>
+            <td>Edit any workflow, script, rule or form: it's your copy of the code</td>
+            <td>The options the app offers</td>
+            <td class="gone">The options the service offered</td></tr>
+          <tr><td>Groups</td>
+            <td>Students register through a form, checked against your roster and confirmed by every member</td>
+            <td>The first student creates the group and adds teammates, or you assign the groups</td>
+            <td class="gone">An invitation link per assignment</td></tr>
+          <tr><td>Deadlines</td>
+            <td>A soft deadline marks work late, and can follow each class's weekly session. The hard deadline makes the repositories read-only, on the minute, by itself.</td>
+            <td>A due date marks work late but doesn't stop pushes. You close an assignment by hand to make its repositories read-only.</td>
+            <td class="gone">A deadline per assignment</td></tr>
+          <tr><td>Autograding</td>
+            <td>Not built in: add your own grader as a workflow</td>
+            <td>Built in: declarative tests or your own scripts</td>
+            <td class="gone">Built in</td></tr>
+          <tr><td>Your student list</td>
+            <td>Stays on your computer. Only student numbers go to GitHub, encrypted.</td>
+            <td>Students are linked by GitHub username or email, in your organization</td>
+            <td class="gone">The Classroom roster, now deleted</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="grid two">
+      <div class="card"><h3>Pick Classroom 50 if…</h3><p>you want autograding built in, and an app that does things for you, and your organization is on a Team plan.</p></div>
+      <div class="card pick"><h3>Pick bedel if…</h3><p>you want groups to sign themselves up against your roster, deadlines that lock on time without you, a free organization, and the freedom to change anything about how it all works.</p></div>
+    </div>
+  </div>
+</section>
+
 <section>
   <div class="wrap">
+    <h2>What it does</h2>
     <div class="grid">
       <div class="card"><h3>Groups register themselves</h3><p>Students fill in a form with their student numbers and GitHub usernames. bedel checks every number against your roster, waits for each member to confirm, then creates their team and invites them.</p></div>
       <div class="card"><h3>A repository per group, per assignment</h3><p>Release an assignment and every group gets a private repository with your starting files, plus an issue that emails them. Groups that register later get theirs automatically.</p></div>
@@ -70,190 +126,50 @@
         <div>&nbsp;&nbsp;rules.py <span class="c"># who gets which soft deadline</span></div>
         <div>&nbsp;&nbsp;register.py <span class="c"># who may register, and how</span></div>
         <div>&nbsp;&nbsp;deadlines.py <span class="c"># locking and reports</span></div>
+        <div><span class="k">web/</span> <span class="c"># your course's own page</span></div>
       </div>
-      <div>
-        <div class="card" style="margin-bottom:16px"><h3>Different deadline policy?</h3><p>Soft deadlines come from one short Python function in <code>rules.py</code>. Give one class an extra week, count from the latest member's session instead of the earliest — it's a few lines.</p></div>
-        <div class="card" style="margin-bottom:16px"><h3>Different schedule?</h3><p>Every workflow is ordinary GitHub Actions YAML. Lock at a different time, add an autograder, send a report somewhere — edit the workflow.</p></div>
+      <div class="stack">
+        <div class="card"><h3>Different deadline policy?</h3><p>Soft deadlines come from one short Python function in <code>rules.py</code>. Give one class an extra week, count from the latest member's session instead of the earliest — it's a few lines.</p></div>
+        <div class="card"><h3>Different schedule?</h3><p>Every workflow is ordinary GitHub Actions YAML. Lock at a different time, add an autograder, send a report somewhere — edit the workflow.</p></div>
         <div class="card"><h3>And still get updates</h3><p>A course keeps bedel as its upstream, so later fixes arrive with one <code>git pull</code>. Your course's own files never conflict.</p></div>
       </div>
     </div>
   </div>
 </section>
 
-<section>
+<section id="start">
   <div class="wrap">
-    <h2>bedel and GitHub Classroom</h2>
-    <p class="sub">Both give every student or group a repository made from your template. They differ in who owns the machinery.</p>
-    <div class="table-scroll">
-      <table class="compare">
-        <thead><tr><th></th><th>bedel</th><th>GitHub Classroom</th></tr></thead>
-        <tbody>
-          <tr><td>Where it runs</td><td>GitHub Actions, in a repository in your organization</td><td>GitHub's hosted Classroom service</td></tr>
-          <tr><td>Changing how it works</td><td>Edit any workflow, script, rule or form. It's your code.</td><td>The options the service offers</td></tr>
-          <tr><td>Group sign-up</td><td>An issue form, checked against your roster, confirmed by every member</td><td>An invitation link per assignment</td></tr>
-          <tr><td>Deadlines</td><td>A soft deadline, per class if you like, and a hard deadline that locks repos</td><td>A deadline per assignment</td></tr>
-          <tr><td>Your student list</td><td>Stays on your computer; only student numbers go to GitHub, encrypted</td><td>Kept in the Classroom roster</td></tr>
-        </tbody>
-      </table>
+    <h2>Setting up, and your tokens</h2>
+    <p class="sub">Setup is six short steps in your browser, about fifteen minutes. GitHub doesn't let a website act for you
+      without a token, so you make two, on GitHub, and paste them in. You shouldn't paste a token anywhere without knowing
+      exactly what it can reach, so here is how the setup handles them.</p>
+    <div class="grid">
+      <div class="card"><h3>The organization comes first</h3><p>You create the course's organization on GitHub before any token. Each token is then made for that organization alone, and fine-grained tokens can't reach past their one owner. Your own repositories and other organizations stay out of reach.</p></div>
+      <div class="card"><h3>Checked before it's used</h3><p>The setup refuses classic tokens, which reach everything you can. It also proves each token belongs to the course's organization before doing anything with it.</p></div>
+      <div class="card"><h3>Sent only to GitHub</h3><p>There's no bedel server. The page's Content-Security-Policy lets it connect only to <code>api.github.com</code>, and your browser enforces that. Tokens stay in the tab's memory and are never saved.</p></div>
+      <div class="card"><h3>Short-lived, or sealed</h3><p>The setup token lasts 7 days, and you can delete it as soon as you're done. The bot's token is encrypted in your browser and stored as a secret that only your course's workflows can read.</p></div>
+      <div class="card"><h3>Then, your course's own page</h3><p>Setup publishes a page from your course's own repository. You run the course from there: releasing assignments, changing deadlines, updating the roster, and seeing who's registered. The code it runs is your copy, which changes only when you pull bedel's updates.</p></div>
+      <div class="card"><h3>Or no browser at all</h3><p>Clone bedel and run <code>./scripts/setup.sh</code>. It does the same with your <code>gh</code> login, and the same scripts release assignments.</p></div>
     </div>
-  </div>
-</section>
-
-<section id="setup">
-  <div class="wrap">
-    <h2>Set up a course</h2>
-    <p class="sub">Six steps, about ten minutes. Run them again any time to change the course, the roster or the token.</p>
-    <p class="notice" style="margin:0 0 20px"><strong>This page has no server.</strong> It runs in your browser and talks only to GitHub's API.
-      Your tokens stay in this tab and are forgotten when you close it. Student lists are read here, and only the student numbers (and classes) are sent to GitHub, encrypted.
-      Prefer a terminal? <code>git clone</code> bedel and run <code>./scripts/setup.sh</code> — it does the same.</p>
-
-    <div class="steps">
-      <div class="step">
-        <header><h3>Your course's organization</h3></header>
-        <p>Students' teams and repositories live in a GitHub organization of their own, one per course edition. A free one is enough.
-          <a href="https://github.com/account/organizations/new?plan=free" target="_blank" rel="noopener">Create an organization</a> if you don't have one, then enter its name.</p>
-        <div class="row">
-          <label>Organization <input id="org" class="wide" placeholder="my-course-2026" autocomplete="off" spellcheck="false"></label>
-          <label>Repository <input id="repo" value="registration" autocomplete="off" spellcheck="false"></label>
-        </div>
-      </div>
-
-      <div class="step">
-        <header><h3>A token for this page</h3></header>
-        <p>GitHub doesn't let a page create tokens, so this is the one thing you click through yourself. The link fills in everything except one field:
-          under <strong>Repository access</strong>, choose <strong>All repositories</strong>, since the course repository doesn't exist yet. It lasts 7 days and is only for setting up.</p>
-        <div class="row">
-          <a class="btn" id="setupTokenLink" target="_blank" rel="noopener">Create the setup token ↗</a>
-        </div>
-        <div class="row">
-          <label>Setup token <input id="setupToken" class="wide" type="password" placeholder="github_pat_…" autocomplete="off" spellcheck="false"></label>
-          <button class="btn" id="checkSetup" type="button">Check</button>
-        </div>
-        <div class="status" id="setupStatus"></div>
-        <details><summary>What this token can do, and why</summary>
-          <p style="margin-top:8px">Organization administration: lock down member permissions (step 6). Administration: create the course repository. Contents: write <code>course.json</code>.
-            Issues: create the labels. Secrets: store the roster and the bot's token, encrypted. Actions and Workflows: release assignments and regenerate the students' files.
-            Members (read): check that you own the organization. It only reaches this organization.</p>
-        </details>
-      </div>
-
-      <div class="step">
-        <header><h3>The course</h3></header>
-        <p>Students see the name. Classes are the weekly sessions soft deadlines are counted from; leave them out if your course has none.</p>
-        <div class="row">
-          <label>Course name <input id="cName" class="wide" placeholder="Distributed Systems"></label>
-        </div>
-        <div class="row">
-          <label>Smallest group <input id="cMin" type="number" min="1" max="6" value="2"></label>
-          <label>Largest group <input id="cMax" type="number" min="1" max="6" value="2"></label>
-          <label>Time zone <select id="cTz"></select></label>
-        </div>
-        <div class="row">
-          <label>What students call their number (optional) <input id="cHint" class="wide" placeholder="your student number"></label>
-        </div>
-        <table class="classes">
-          <thead><tr><th>Class</th><th>Day</th><th>Session ends</th><th>Note (optional)</th><th></th></tr></thead>
-          <tbody id="classRows"></tbody>
-        </table>
-        <button class="btn small" id="addClass" type="button">+ Add a class</button>
-        <div class="status" id="courseStatus"></div>
-      </div>
-
-      <div class="step">
-        <header><h3>Your students</h3></header>
-        <p>The roster is who may register: a CSV export with a student-number column, or a plain list of numbers.
-          Class listings are optional: one file per class with a <code>Class: P1</code> (or <code>Turno: P1</code>) line,
-          or one file of <code>number,class</code> lines. Leave both empty to keep what's already stored.</p>
-        <div class="row">
-          <label>Roster <input id="roster" type="file" accept=".csv,.tsv,.txt,text/*"></label>
-          <label id="colWrap" hidden>Student-number column <select id="rosterCol"></select></label>
-        </div>
-        <div class="status" id="rosterStatus"></div>
-        <div class="row">
-          <label>Class listings <input id="listings" type="file" multiple></label>
-        </div>
-        <div class="status" id="listingStatus"></div>
-        <div class="row">
-          <label>Test students <input id="testN" type="number" min="0" max="20" value="0"></label>
-          <span style="color:var(--muted);font-size:.9rem">Adds 99901, 99902, … so you can register a test group with your own accounts. Set back to 0 before term.</span>
-        </div>
-      </div>
-
-      <div class="step">
-        <header><h3>The bot's token</h3></header>
-        <p>The bot keeps this token to create teams and repositories and to lock them at deadlines, so it gets only that, for as long as your term lasts.
-          Again choose <strong>All repositories</strong>: the bot creates new repositories all term. It must belong to an owner of the organization.</p>
-        <div class="row">
-          <label>Lasts (days) <input id="botDays" type="number" min="1" max="366" value="180"></label>
-          <a class="btn" id="botTokenLink" target="_blank" rel="noopener">Create the bot's token ↗</a>
-        </div>
-        <div class="row">
-          <label>Bot token <input id="botToken" class="wide" type="password" placeholder="github_pat_… (empty keeps the stored one)" autocomplete="off" spellcheck="false"></label>
-        </div>
-        <details><summary>What the bot's token can do</summary>
-          <p style="margin-top:8px">Administration: create repositories and give teams access. Contents: starting files, deadlines, the push archive. Issues: announce assignments.
-            Commit statuses: mark late commits. Workflows: starting files that contain workflows. Members: create teams and invite students.
-            Before it's stored, the page checks each permission with a request GitHub refuses without creating anything.</p>
-        </details>
-      </div>
-
-      <div class="step">
-        <header><h3>Set it up</h3></header>
-        <p>Locks down what organization members can do, creates the repository from bedel, adds the labels, stores the secrets and writes <code>course.json</code>.
-          Every part checks what's already there first, so running it again only changes what differs.</p>
-        <button class="btn primary" id="runSetup" type="button">Set up the course</button>
-        <ol class="log" id="setupLog"></ol>
-        <div class="done" id="setupDone"></div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section id="assignments">
-  <div class="wrap">
-    <h2>Release an assignment</h2>
-    <p class="sub">Uses the setup token above. Every registered group gets its own private repository with your starting files.
-      You can do the same from your course repository's <strong>Actions</strong> tab, under <em>Release an assignment</em>.</p>
-    <div class="step">
-      <div class="row">
-        <label>Name <input id="aName" placeholder="a1" autocomplete="off" spellcheck="false"></label>
-        <label>Starting files: a folder <input id="aFolder" type="file" webkitdirectory multiple></label>
-        <label>…or an existing repository <input id="aTemplate" placeholder="a1-template" autocomplete="off" spellcheck="false"></label>
-      </div>
-      <div class="status" id="folderStatus"></div>
-      <div class="row">
-        <label>Soft deadline
-          <select id="aSoftMode">
-            <option value="week">By class: a week after each class's session in…</option>
-            <option value="date">One date for everyone</option>
-            <option value="none">None</option>
-          </select>
-        </label>
-        <label id="aSoftWeekWrap">Week of <input id="aSoftWeek" type="date"></label>
-        <label id="aSoftDateWrap" hidden>Soft deadline <input id="aSoft" type="datetime-local"></label>
-      </div>
-      <div class="row">
-        <label>Hard deadline (repos lock) <input id="aHard" type="datetime-local"></label>
-        <label class="check"><input id="aNoHard" type="checkbox"> Never lock</label>
-      </div>
-      <div class="row">
-        <label>Start from each group's earlier assignment <select id="aCarry"><option value="">No — start from the files only</option></select></label>
-        <label class="check"><input id="aDry" type="checkbox"> Dry run (only show what would happen)</label>
-      </div>
-      <button class="btn primary" id="runRelease" type="button">Release</button>
-      <ol class="log" id="releaseLog"></ol>
+    <div class="cta center">
+      <a class="btn primary" href="setup.html">Set up a course</a>
     </div>
   </div>
 </section>
 
 <footer>
   <div class="wrap">
-    bedel is open source: read it, change it, run it. <a id="footRepo" href="https://github.com/ajccosta/bedel">github.com/ajccosta/bedel</a> ·
-    <a id="footDocs" href="https://github.com/ajccosta/bedel/blob/main/scripts/README.md">Staff guide</a>.
-    <br><em>Bedel</em> is Portuguese for the university porter who keeps the rooms and the timetable: he lets you in, and locks the door when time is up.
+    <p>bedel is free: read it, change it, run it. <a data-template="" data-label href="https://github.com/ajccosta/bedel">github.com/ajccosta/bedel</a> ·
+      <a data-template="/blob/main/scripts/README.md" href="https://github.com/ajccosta/bedel/blob/main/scripts/README.md">Staff guide</a> ·
+      <a data-template="/tree/main/web" href="https://github.com/ajccosta/bedel/tree/main/web">This page's code</a></p>
+    <p><em>Bedel</em> is Portuguese for the university porter who keeps the rooms and the timetable: he lets you in, and locks the door when time is up.</p>
+    <p class="credit">
+      <a href="https://www.anthropic.com/claude">Written by Claude Opus 5.5</a>
+      <a class="anthropic" href="https://www.anthropic.com" aria-label="Anthropic"><span aria-hidden="true"></span></a>
+    </p>
   </div>
 </footer>
 
-<script type="module" src="js/main.js"></script>
+<script type="module" src="js/landing.js"></script>
 </body>
 </html>

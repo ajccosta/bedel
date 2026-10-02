@@ -39,12 +39,17 @@ bedel's updates*). Step 6 asks for the course details and writes `course.json`. 
 file is on the default branch the workflows start, see there is no course, and stop, so a
 half-set-up repo never fails or creates anything.
 
-**Or in a browser:** [the setup page](https://ajccosta.github.io/bedel/) does the same
+**Or in a browser:** [the setup page](https://ajccosta.github.io/bedel/setup.html) does the same
 steps through GitHub's API: organization permissions, the repository (created from bedel's
 template), labels, the roster and class secrets, the bot's token (checked with the same
-probes as step 4) and `course.json`. It runs entirely in the browser; student lists are
-parsed there and only the numbers are sent, encrypted. It needs two fine-grained tokens,
-one for itself (7 days) and one for the bot, both from pre-filled links.
+probes as step 4) and `course.json`, and then publishes the course's own page (see
+*The course's page*). It runs entirely in the browser; student lists are parsed there and
+only the numbers are sent, encrypted. It needs two fine-grained tokens, one for itself
+(7 days) and one for the bot, both from pre-filled links, and asks for them only once
+the organization exists, so that both are made for it alone. It refuses classic tokens,
+and proves a token belongs to the organization by asking it to create a repository there
+with an empty request: GitHub answers 422 (malformed, nothing created) to a token that
+may, 403 to one that may not, and a fine-grained token has exactly one owner.
 
 GitHub's **Use this template** button, which is what the page uses, starts the copy's
 history afresh, so pulling bedel's updates later means merging two unrelated histories
@@ -177,10 +182,10 @@ its own. All of them take the org as the first argument and have a `--help`.
 ## Assignments
 
 **From GitHub:** the *Release an assignment* workflow in the course repository's **Actions**
-tab (or the setup page, which runs it for you) does everything below with the bot's token.
+tab (or the course's page, which runs it for you) does everything below with the bot's token.
 Its form asks for the name, the repository holding the starting files (default
 `<name>-template`), the deadlines and an optional assignment to carry over from; tick
-*dry run* to see what would happen. The setup page can upload a folder of starting files
+*dry run* to see what would happen. The course's page can upload a folder of starting files
 for you.
 
 **From a terminal:** create one when you release it. Nothing about assignments is set up in advance, so you
@@ -637,7 +642,8 @@ it actually administers each repository in the list, which is what decides it an
 - **Something looks wrong?** `scripts/setup/07_verify.sh ORG` re-checks the whole setup
   without changing anything. Run it after any push to the bot itself — it is what catches
   "I edited the workflow but never committed it".
-- **Token expired?** `scripts/setup/04_admin_token.sh ORG` walks you through a new one.
+- **Token expired?** The course's page shows the bot's runs failing; replace the token there
+  (*The bot's token*), or with `scripts/setup/04_admin_token.sh ORG`.
 - **Cleaning up a test run?** See *Resetting after a test run* above.
 - **Finding an old registration:** on success the bot retitles the issue to
   `Group registration — gXX_<numbers>`, so searching the closed issues for a group number
@@ -657,13 +663,35 @@ scripts/setup/06_course.sh --min 2 --max 3      # or no flags, to be asked
 
 Group size, classes, name and time zone all change the same way: the step rewrites
 `course.json`, regenerates the students' README and form from it, and commits and pushes.
-Editing `course.json` anywhere else — GitHub's web editor, the setup page — works too: the
+Editing `course.json` anywhere else — GitHub's web editor, the course's page — works too: the
 *Course files* workflow (`.github/workflows/course.yml`) regenerates the students' files
 whenever `course.json` changes on the default branch.
 Don't edit the generated files by hand. The bot finds a member by looking the form's label
 up verbatim, so a slot labelled `Member 3 – student number` (en dash) or
 `Member 3 - Student Number` is silently ignored and the group registers one member short.
 Slots up to the minimum are required and the rest optional; at most 6 members.
+
+## The course's page
+
+`web/` is a small static site, published by `.github/workflows/pages.yml`. In bedel itself
+it's the landing page and the setup page; in a course, `web/manage.html` becomes the front
+page, at `https://ORG.github.io/registration/`. Without a token it reads what's public —
+`course.json`, `assignments/`, the registration issues and the bot's last runs. With a
+fine-grained token for the organization (a pre-filled link, 7 days by default) it releases
+assignments, edits the course, replaces the roster and class secrets, and renews the bot's
+token. Tokens stay in the tab's memory; the page's Content-Security-Policy allows no
+connection but `api.github.com`.
+
+The setup page turns it on. A course set up from a terminal turns it on with:
+
+```
+gh api -X POST repos/ORG/registration/pages -f build_type=workflow
+gh workflow run pages.yml -R ORG/registration
+```
+
+Until Pages is on with *GitHub Actions* as its source, the workflow checks, finds nothing to
+do and stops. Any course can also be opened from bedel's own copy:
+`https://ajccosta.github.io/bedel/manage.html?repo=ORG/registration`.
 
 ## Getting bedel's updates
 

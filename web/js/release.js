@@ -2,8 +2,7 @@
 // workflow (.github/workflows/assignment.yml), which runs new_assignment.py.
 import { $, logger } from "./dom.js";
 import { gh, exists, sleep, b64FromBytes, waitForRun } from "./github.js";
-import { session, target } from "./state.js";
-import { checkSetup } from "./setup.js";
+import { ctx, session } from "./state.js";
 import { loadAssignments, folderFiles, MAX_BLOB } from "./assignments.js";
 
 const ASSIGNMENT_RE = /^[a-z0-9][a-z0-9_-]*$/;
@@ -75,11 +74,10 @@ async function putStartingFiles(log, token, org, name, template, dry) {
 
 export async function release() {
   const log = logger("releaseLog");
-  const { org, repo, token } = target();
-  if (!org || !token) throw new Error("Fill in the organization and the setup token above first.");
+  const { org, repo, token } = ctx;
+  if (!ctx.login) throw new Error("Check a token for this course first.");
   const name = $("aName").value.trim();
   if (!ASSIGNMENT_RE.test(name)) throw new Error("The name must be lowercase letters, digits, - and _, like a1.");
-  if (!session.login) { const s = log("Checking the setup token"); s(await checkSetup()); }
   const inputs = readInputs(name);
   const dry = inputs.dry_run === "true";
   inputs.template = $("aTemplate").value.trim() || `${name}-template`;

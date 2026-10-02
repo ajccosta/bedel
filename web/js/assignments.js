@@ -1,22 +1,31 @@
 // The assignment form: which assignments exist, the deadline fields, the folder.
 import { $, setStatus } from "./dom.js";
-import { gh } from "./github.js";
+import { gh, textFromB64 } from "./github.js";
 import { hasClasses } from "./course.js";
-import { session, target } from "./state.js";
+import { ctx, session } from "./state.js";
 
 const SKIP = new Set([".git", ".DS_Store", "__pycache__", ".pytest_cache", "node_modules"]);
 export const MAX_BLOB = 10 * 1024 * 1024;
 
+// Every assignment's definition (assignments/*.json), oldest first. The course
+// repository is public, so this works without a token too.
 export async function loadAssignments() {
-  const { org, repo, token } = target();
-  session.assignments = [];
-  try {
-    const items = await gh(token, "GET", `/repos/${org}/${repo}/contents/assignments`);
-    session.assignments = items.filter((i) => i.name.endsWith(".json")).map((i) => i.name.slice(0, -5)).sort();
-  } catch (e) { if (e.status !== 404) return; }
+  const { org, repo, token } = ctx;
+  let items = [];
+  try { items = await gh(token, "GET", `/repos/${org}/${repo}/contents/assignments`); }
+  catch (e) { if (e.status !== 404) throw e; }
+  const defs = await Promise.all(items.filter((i) => i.name.endsWith(".json")).map(async (i) => {
+    try { return JSON.parse(textFromB64((await gh(token, "GET", `/repos/${org}/${repo}/contents/${i.path}`)).content)); }
+    catch { return { name: i.name.slice(0, -5) }; }
+  }));
+  defs.sort((x, y) => (x.created || "").localeCompare(y.created || "") || x.name.localeCompare(y.name));
+  session.assignments = defs.map((d) => d.name);
   const sel = $("aCarry");
-  sel.length = 1;
-  for (const a of session.assignments) sel.add(new Option(a, a));
+  if (sel) {
+    sel.length = 1;
+    for (const a of session.assignments) sel.add(new Option(a, a));
+  }
+  return defs;
 }
 
 let softModeChosen = false;   // once someone picks, the page stops choosing for them

@@ -1,241 +1,273 @@
-// Checking the setup token, and the setup run itself (steps 1-6 of setup.sh).
-import { $, logger } from "./dom.js";
-import { TEMPLATE, gh, exists, paginate, sleep, b64FromText, textFromB64, setSecret, probe,
-         waitForRun } from "./github.js";
-import { readCourse, fillCourse } from "./course.js";
-import { session, students, target } from "./state.js";
-import { loadAssignments } from "./assignments.js";
+// The setup page: six steps, each checked before the next one opens.
+import { $, setStatus, logger, runButton } from "./dom.js";
+import { initPage } from "./page.js";
+import { TEMPLATE, gh, exists, probe, loadSodium, seal, b64FromText, textFromB64 } from "./github.js";
+import { SETUP_PERMISSIONS, BOT_PERMISSIONS, TOKENS_PAGE, tokenUrl, checkToken } from "./tokens.js";
+import { initCourseForm, readCourse, fillCourse } from "./course.js";
+import { initStudentInputs, parseRoster, parseListing, mergeListings } from "./students.js";
+import { ctx, session, students } from "./state.js";
+import * as ops from "./ops.js";
 
-// What scripts/setup/01_org_settings.sh sets.
-const ORG_SETTINGS = {
-  default_repository_permission: "none",        // members see only what their team is given
-  members_can_create_repositories: false,       // only the bot creates repos
-  members_can_create_public_repositories: false,
-  members_can_create_private_repositories: false,
-  members_can_create_pages: false,
-  members_can_delete_repositories: false,       // students can't delete their work
-  members_can_change_repo_visibility: false,    // no accidentally public solutions
-  members_can_create_teams: false,              // only the bot creates teams
-};
-// What scripts/setup/03_labels.sh creates.
-const LABELS = [
-  { name: "registration", color: "1D76DB", description: "Group registration request" },
-  { name: "registered", color: "0E8A16", description: "Team and repos created" },
-  { name: "class-mismatch", color: "D93F0B", description: "A member's class differs from the faculty listing - check it" },
-];
+const LAST = 6;
+let current = 1;
+const done = new Set();                  // steps whose checks have passed
+const stored = { bot: false, roster: false };   // what an existing course already has
+let botChecked = false;
 
-export async function checkSetup() {
-  const { org, repo, token } = target();
-  if (!org) throw new Error("Enter the organization first.");
-  if (!token) throw new Error("Paste the setup token first.");
-  const me = await gh(token, "GET", "/user").catch((e) => {
-    throw new Error(e.status === 401 ? "GitHub doesn't accept that token. Copy it again, or make a new one." : e.message);
-  });
-  session.login = me.login;
-  let role = null;
-  try { role = (await gh(token, "GET", `/user/memberships/orgs/${org}`)).role; }
-  catch (e) {
-    if (e.status === 404) throw new Error(`${me.login} isn't a member of ${org}, or the organization doesn't exist.`);
-    if (e.status === 403) throw new Error(`GitHub refused the token for ${org}: ${e.message}. If the organization approves tokens, approve it under Organization settings → Personal access tokens.`);
-    throw e;
+// ---------- moving between steps ----------
+const reachable = (k) => [...Array(k - 1).keys()].every((i) => done.has(i + 1));
+
+function show(n) {
+  current = n;
+  for (const s of document.querySelectorAll(".wstep")) s.hidden = Number(s.dataset.step) !== n;
+  for (const b of document.querySelectorAll("#progress button")) {
+    const k = Number(b.dataset.go);
+    b.disabled = k !== n && !reachable(k);
+    b.parentElement.className = k === n ? "is-current" : done.has(k) ? "is-done" : "";
+    if (k === n) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current");
   }
-  if (role !== "admin") throw new Error(`${me.login} is a member of ${org} but not an owner. Setup needs an owner.`);
-
-  session.repoExists = await exists(token, `/repos/${org}/${repo}`);
-  let loaded = false;
-  if (session.repoExists) {
-    const info = await gh(token, "GET", `/repos/${org}/${repo}`);
-    session.branch = info.default_branch || "main";
-    try {
-      const f = await gh(token, "GET", `/repos/${org}/${repo}/contents/course.json`);
-      fillCourse(JSON.parse(textFromB64(f.content)));
-      loaded = true;
-    } catch (e) { if (e.status !== 404) throw e; }
-    await loadAssignments();
+  $("back").hidden = n === 1;
+  $("next").hidden = n === LAST;
+  if (n === 4 && stored.roster && !students.roster) {
+    setStatus("studentsStatus", "A roster is already stored. Choose a file only to replace it.", "ok");
   }
-  return `Signed in as ${me.login}, an owner of ${org}. ` +
-    (session.repoExists ? `${org}/${repo} exists${loaded ? "; its course settings are loaded below" : ""}.`
-                        : `${org}/${repo} will be created.`);
+  if (n === 5 && stored.bot && !$("botToken").value.trim()) {
+    setStatus("botStatus", "The bot already has a token stored. Leave this empty to keep it, or paste a new one to replace it.", "ok");
+  }
+  if (n === LAST) renderPlan();
+  $("progress").scrollIntoView({ block: "nearest" });
 }
 
-export async function runSetup() {
+// Whatever comes after `step` has to be checked again.
+function invalidate(step) {
+  for (const k of [...done]) if (k >= step) done.delete(k);
+  show(current);
+}
+
+const CHECKS = {
+  1: () => ctx.org ? true : findOrg(),
+  2: () => ctx.login ? true : checkSetupToken(),
+  3: () => {
+    const { errors } = readCourse();
+    setStatus("courseStatus", errors.join(" "), errors.length ? "bad" : "");
+    return !errors.length;
+  },
+  4: () => {
+    if (students.roster || stored.roster) return true;
+    setStatus("studentsStatus", "Choose the roster file: it's who may register.", "bad");
+    return false;
+  },
+  5: () => botChecked ? true : checkBotToken(),
+};
+
+async function next() {
+  const btn = $("next");
+  btn.disabled = true;
+  try {
+    if (await CHECKS[current]()) { done.add(current); show(current + 1); }
+  } finally { btn.disabled = false; }
+}
+
+// ---------- 1. the organization ----------
+function fillOrgNames() {
+  for (const el of document.querySelectorAll(".orgname")) el.textContent = ctx.org || "your organization";
+  refreshLinks();
+}
+
+async function findOrg() {
+  const name = $("org").value.trim();
+  $("orgCard").hidden = true;
+  if (!name) { setStatus("orgStatus", "Enter the organization's name.", "bad"); return false; }
+  if (!/^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$/.test(name)) {
+    setStatus("orgStatus", "That isn't an organization name: letters, digits and single hyphens.", "bad");
+    return false;
+  }
+  setStatus("orgStatus", "Looking for it on GitHub…");
+  let o;
+  try { o = await gh(null, "GET", `/orgs/${name}`); }
+  catch (e) {
+    setStatus("orgStatus", e.status === 404
+      ? `There's no organization called ${name} on GitHub yet. Create it with the button above, then find it here.`
+      : e.message, "bad");
+    return false;
+  }
+  ctx.org = o.login;
+  ctx.repo = $("repo").value.trim() || "registration";
+  $("orgAvatar").src = o.avatar_url;
+  $("orgName").textContent = o.name ? `${o.name} (${o.login})` : o.login;
+  $("orgInfo").textContent = `github.com/${o.login} · on GitHub since ${new Date(o.created_at).toLocaleDateString()}`;
+  $("orgCard").hidden = false;
+  setStatus("orgStatus", "Found it. The tokens in the next steps are made for this organization.", "ok");
+  fillOrgNames();
+  return true;
+}
+
+// ---------- 2. the setup token ----------
+function checklist(id) {
+  const list = $(id);
+  list.innerHTML = "";
+  return (text) => { const li = document.createElement("li"); li.textContent = text; list.append(li); };
+}
+
+async function checkSetupToken() {
+  const passed = checklist("setupChecks");
+  setStatus("setupStatus", "Checking…");
+  const token = $("setupToken").value.trim();
+  try {
+    ctx.login = await checkToken(token, ctx.org, passed);
+    ctx.token = token;
+    const { org, repo } = ctx;
+    let message = `${org}/${repo} will be created at the end.`;
+    if (await ops.findRepo(token, org, repo)) {
+      const course = await ops.readCourseFile(token, org, repo);
+      if (course) fillCourse(course);
+      stored.bot = await exists(token, `/repos/${org}/${repo}/actions/secrets/ORG_ADMIN_TOKEN`);
+      stored.roster = await exists(token, `/repos/${org}/${repo}/actions/secrets/ROSTER`);
+      message = `${org}/${repo} already exists` + (course ? ", and its settings are loaded into the next steps" : "") +
+        ". Setting up again changes only what differs.";
+    }
+    setStatus("setupStatus", message, "ok");
+    return true;
+  } catch (e) {
+    ctx.login = null;
+    setStatus("setupStatus", e.message, "bad");
+    return false;
+  }
+}
+
+// ---------- 5. the bot's token ----------
+async function checkBotToken() {
+  const passed = checklist("botChecks");
+  const token = $("botToken").value.trim();
+  if (!token && stored.bot) { botChecked = true; return true; }
+  setStatus("botStatus", "Checking…");
+  try {
+    if (token && token === ctx.token) {
+      throw new Error("That's the setup token. The bot needs its own, made with the link above, so the setup token can be deleted.");
+    }
+    const login = await checkToken(token, ctx.org, passed);
+    if ((await probe(token, `/orgs/${ctx.org}/teams`)) === "denied") {
+      throw new Error("This token can't create teams: Members must be Read and write. Make a new one with the link above.");
+    }
+    passed(`Can create teams and repositories in ${ctx.org}. The rest is checked once the course repository exists.`);
+    setStatus("botStatus", `Ready to be sealed and stored. The bot will act as ${login}.`, "ok");
+    botChecked = true;
+    return true;
+  } catch (e) {
+    setStatus("botStatus", e.message, "bad");
+    return false;
+  }
+}
+
+// ---------- 6. setting it up ----------
+const testCount = () => Math.max(0, Math.min(20, parseInt($("testN").value, 10) || 0));
+
+function renderPlan() {
+  const { org, repo } = ctx;
+  const { course } = readCourse();
+  const n = testCount();
+  const items = [
+    `Lock down what members of ${org} can do: no access beyond their own team's repositories, and they can't create, delete or publish repositories, or create teams.`,
+    session.repoExists ? `Keep ${org}/${repo}, which already exists.`
+      : `Create ${org}/${repo} from ${TEMPLATE}. It's public, so students who aren't members yet can open the registration form.`,
+    "Add the labels the bot puts on registrations.",
+    $("botToken").value.trim() ? "Check the bot's token can do everything it needs to, then seal it and store it as the secret ORG_ADMIN_TOKEN."
+      : "Keep the bot's token already stored.",
+    students.roster ? `Seal and store the roster: ${students.roster.length} student numbers` + (n ? `, and ${n} test students.` : ".")
+      : "Keep the roster already stored.",
+    ...(students.classes ? [`Seal and store the class listings: ${students.classes.length} students.`] : []),
+    `Write course.json (${course.name}) and generate the students' page and registration form from it.`,
+    `Publish the course's own page at ${ops.coursePageUrl(org, repo)}, where you run the course from then on.`,
+  ];
+  const ul = $("plan");
+  ul.innerHTML = "";
+  for (const t of items) { const li = document.createElement("li"); li.textContent = t; ul.append(li); }
+}
+
+async function runSetup() {
   const log = logger("setupLog");
   $("setupDone").className = "done";
-  const { org, repo, token } = target();
-  const first = log("Checking the setup token");
-  first(await checkSetup());
-
+  for (let k = 1; k < LAST; k++) if (!done.has(k)) throw new Error(`Step ${k} isn't finished yet.`);
+  const { org, repo, token } = ctx;
   const { course, errors } = readCourse();
   if (errors.length) throw new Error(errors.join(" "));
 
-  await lockDownOrg(log, token, org);
-  await createRepo(log, token, org, repo, course);
-  await addLabels(log, token, org, repo);
-  await storeBotToken(log, token, org, repo, $("botToken").value.trim());
-  const tests = await storeStudents(log, token, org, repo);
+  await ops.lockDownOrg(log, token, org);
+  await ops.createRepo(log, token, org, repo, course.name);
+  await ops.addLabels(log, token, org, repo);
+  const bot = $("botToken").value.trim();
+  if (bot) await ops.storeBotToken(log, token, org, repo, bot);
+  else log("Keeping the bot's token already stored", "ok");
+  const tests = await ops.storeStudents(log, token, org, repo, testCount());
   // course.json last: the workflows stay idle until it's there, so they never
   // start before the secrets they need.
-  const headSha = await writeCourse(log, token, org, repo, course);
-  await generateStudentFiles(log, token, org, repo, headSha);
-  showDone(org, repo, tests);
-  await loadAssignments();
+  const headSha = await ops.writeCourse(log, token, org, repo, course);
+  await ops.generateStudentFiles(log, token, org, repo, headSha);
+  const page = await ops.publishCoursePage(log, token, org, repo);
+  showDone(org, repo, tests, page);
 }
 
-async function lockDownOrg(log, token, org) {
-  const s = log("Locking down what members can do in the organization");
-  const current = await gh(token, "GET", `/orgs/${org}`);
-  const change = Object.fromEntries(Object.entries(ORG_SETTINGS).filter(([k, v]) => current[k] !== v));
-  if (!Object.keys(change).length) return s("Organization permissions already locked down");
-  const failed = [];
-  try { await gh(token, "PATCH", `/orgs/${org}`, change); }
-  catch {
-    for (const [k, v] of Object.entries(change)) {
-      try { await gh(token, "PATCH", `/orgs/${org}`, { [k]: v }); } catch { failed.push(k); }
-    }
-  }
-  if (failed.length) s(`Organization permissions set, except ${failed.join(", ")} (not available on this plan)`, "warn");
-  else s("Organization permissions locked down: base permission none, members can't create or delete repos or teams");
+function showDone(org, repo, tests, page) {
+  const box = $("setupDone");
+  box.innerHTML = `<strong>Your course is ready.</strong>
+    <p>Give your students this link: <a data-k="form"></a></p>
+    <p>Run the course from its own page from now on: <a data-k="page"></a></p>
+    <p>Try it first with two accounts of your own${tests.length ? ` and the test numbers ${tests.slice(0, 2).join(" and ")}` : ""}.</p>
+    <p><strong>Now delete the setup token</strong>, on <a data-k="tokens">GitHub's token page</a>, and close this tab.
+      The course's page asks for a token of its own when you change something.</p>`;
+  const link = (k, href, text) => { const a = box.querySelector(`[data-k=${k}]`); a.href = href; if (text) a.textContent = text; };
+  const form = `https://github.com/${org}/${repo}/issues/new?template=register.yml`;
+  link("form", form, form);
+  const own = page || `manage.html?repo=${org}/${repo}`;
+  link("page", own, page || "this course on bedel's page");
+  link("tokens", TOKENS_PAGE);
+  box.className = "done show";
 }
 
-async function createRepo(log, token, org, repo, course) {
-  const s = log(`Creating ${org}/${repo} from ${TEMPLATE}`);
-  if (session.repoExists) s(`${org}/${repo} already exists`);
-  else {
-    await gh(token, "POST", `/repos/${TEMPLATE}/generate`, {
-      owner: org, name: repo, private: false, include_all_branches: false,
-      description: `Group registration, repos and deadlines for ${course.name} (bedel)`,
-    });
-    // GitHub fills a generated repository in a moment after creating it.
-    for (let i = 0; i < 45; i++) {
-      try { if ((await gh(token, "GET", `/repos/${org}/${repo}/commits?per_page=1`)).length) break; }
-      catch (e) { if (![404, 409].includes(e.status)) throw e; }
-      await sleep(2000);
-    }
-    session.repoExists = true;
-    s(`Created ${org}/${repo}, public so students outside the organization can open the form`);
-  }
-  const info = await gh(token, "GET", `/repos/${org}/${repo}`);
-  session.branch = info.default_branch || "main";
-  if (info.private) {
-    log(`${org}/${repo} is private: students who aren't members yet can't see the form. Make it public in its settings.`, "warn");
-  }
+// ---------- wiring ----------
+function refreshLinks() {
+  const org = ctx.org;
+  const days = Math.min(366, Math.max(1, parseInt($("botDays").value, 10) || 180));
+  $("setupTokenLink").href = tokenUrl(org, `bedel setup (${org})`,
+    "Sets up the course with the bedel setup page. Delete it once setup is done.", 7, SETUP_PERMISSIONS);
+  $("botTokenLink").href = tokenUrl(org, `bedel bot (${org})`,
+    "The course bot's token: creates teams and repos, locks them at deadlines", days, BOT_PERMISSIONS);
 }
 
-async function addLabels(log, token, org, repo) {
-  const s = log("Adding the labels the bot uses");
-  const have = new Set((await paginate(token, `/repos/${org}/${repo}/labels`)).map((l) => l.name));
-  const added = [];
-  for (const l of LABELS) {
-    if (!have.has(l.name)) { await gh(token, "POST", `/repos/${org}/${repo}/labels`, l); added.push(l.name); }
-  }
-  s(added.length ? `Labels added: ${added.join(", ")}` : "Labels already there");
-}
+initPage();
+initCourseForm();
+initStudentInputs();
+fillOrgNames();
+show(1);
 
-// The same checks as scripts/setup/04_admin_token.sh, before the token is stored.
-async function storeBotToken(log, token, org, repo, botToken) {
-  const s = log("Checking the bot's token");
-  if (!botToken) {
-    if (!(await exists(token, `/repos/${org}/${repo}/actions/secrets/ORG_ADMIN_TOKEN`))) {
-      throw new Error("There's no bot token stored yet. Create one in step 5 and paste it.");
-    }
-    return s("Keeping the bot token already stored");
-  }
-  let bot;
-  try { bot = await gh(botToken, "GET", "/user"); }
-  catch { throw new Error("GitHub doesn't accept the bot's token. Copy it again, or make a new one."); }
-  const checks = [
-    ["create teams (Members)", `/orgs/${org}/teams`],
-    ["create repositories (Administration)", `/orgs/${org}/repos`],
-    ["write files (Contents)", `/repos/${org}/${repo}/git/blobs`],
-    ["mark commits (Commit statuses)", `/repos/${org}/${repo}/statuses/0000000000000000000000000000000000000000`],
-    ["open issues (Issues)", `/repos/${org}/${repo}/issues`],
-  ];
-  const bad = [];
-  for (const [what, path] of checks) {
-    const r = await probe(botToken, path);
-    if (r === "denied") bad.push(what);
-    else if (r !== "ok") log(`Couldn't tell whether the bot's token can ${what}: ${r}`, "warn");
-  }
-  if (bad.length) throw new Error(`The bot's token can't ${bad.join(", ")}. Make a new one with the link in step 5.`);
-  // "All repositories" can't be read off a token; what can be seen is whether
-  // it reaches every repository the owner can see right now.
-  const mine = new Set((await paginate(token, `/orgs/${org}/repos?type=all`)).map((r) => r.name));
-  const its = new Set((await paginate(botToken, `/orgs/${org}/repos?type=all`)).map((r) => r.name));
-  const missing = [...mine].filter((n) => !its.has(n));
-  if (missing.length) {
-    throw new Error(`The bot's token reaches only ${mine.size - missing.length} of ${mine.size} repositories. Make a new one with Repository access: All repositories.`);
-  }
-  await setSecret(token, org, repo, "ORG_ADMIN_TOKEN", botToken);
-  s(`Bot token (${bot.login}) checked and stored as the secret ORG_ADMIN_TOKEN`);
-}
+$("findOrg").onclick = async () => { if (await findOrg()) { done.add(1); show(1); } };
+$("org").addEventListener("keydown", (e) => { if (e.key === "Enter") $("findOrg").click(); });
+$("org").addEventListener("input", () => {
+  ctx.org = ""; ctx.login = null; ctx.token = ""; botChecked = false;
+  stored.bot = stored.roster = false;
+  $("orgCard").hidden = true;
+  setStatus("orgStatus", "");
+  for (const id of ["setupChecks", "botChecks"]) $(id).innerHTML = "";
+  for (const id of ["setupStatus", "botStatus"]) setStatus(id, "");
+  fillOrgNames();
+  invalidate(1);
+});
+$("repo").addEventListener("input", () => {
+  ctx.repo = $("repo").value.trim() || "registration";
+  ctx.login = null;
+  invalidate(2);
+});
+$("checkSetup").onclick = async () => { if (await checkSetupToken()) { done.add(2); show(2); } };
+$("setupToken").addEventListener("input", () => { ctx.login = null; ctx.token = ""; $("setupChecks").innerHTML = ""; invalidate(2); });
+$("checkBot").onclick = async () => { if (await checkBotToken()) { done.add(5); show(5); } };
+$("botToken").addEventListener("input", () => { botChecked = false; $("botChecks").innerHTML = ""; invalidate(5); });
+$("botDays").addEventListener("input", refreshLinks);
+document.addEventListener("students-changed", () => setStatus("studentsStatus", ""));
+for (const b of document.querySelectorAll("#progress button")) b.onclick = () => show(Number(b.dataset.go));
+$("back").onclick = () => show(current - 1);
+$("next").onclick = next;
+runButton("runSetup", "setupLog", runSetup);
 
-async function storeStudents(log, token, org, repo) {
-  const testN = Math.max(0, Math.min(20, parseInt($("testN").value, 10) || 0));
-  const tests = Array.from({ length: testN }, (_, i) => `999${String(i + 1).padStart(2, "0")}`);
-  const s = log("Storing the roster");
-  if (students.roster) {
-    await setSecret(token, org, repo, "ROSTER", [...students.roster, ...tests].join("\n"));
-    s(`Roster stored as the secret ROSTER: ${students.roster.length} students` + (testN ? ` and ${testN} test students` : ""));
-  } else if (await exists(token, `/repos/${org}/${repo}/actions/secrets/ROSTER`)) {
-    s("Keeping the roster already stored" + (testN ? " (choose the roster file again to add test students)" : ""),
-      testN ? "warn" : "ok");
-  } else {
-    throw new Error("No roster yet: choose the roster file in step 4, so the bot knows who may register.");
-  }
-  if (students.classes) {
-    const c = log("Storing the class listings");
-    await setSecret(token, org, repo, "CLASSES", students.classes.map(([n, k]) => `${n},${k}`).join("\n"));
-    c(`Classes stored as the secret CLASSES: ${students.classes.length} students`);
-  }
-  return tests;
-}
-
-// Returns the commit that changed course.json, or null if it was already current.
-async function writeCourse(log, token, org, repo, course) {
-  const s = log("Writing course.json");
-  const text = JSON.stringify(course, null, 2) + "\n";
-  let sha = null;
-  try {
-    const f = await gh(token, "GET", `/repos/${org}/${repo}/contents/course.json`);
-    sha = f.sha;
-    if (textFromB64(f.content) === text) { s("course.json already up to date"); return null; }
-  } catch (e) { if (e.status !== 404) throw e; }
-  const res = await gh(token, "PUT", `/repos/${org}/${repo}/contents/course.json`, {
-    message: sha ? `Update the course: ${course.name}` : `Set up the course: ${course.name}`,
-    content: b64FromText(text), ...(sha ? { sha } : {}), branch: session.branch,
-  });
-  s(sha ? "course.json updated" : "course.json written");
-  return res.commit.sha;
-}
-
-// The students' README and form are generated by the Course files workflow
-// (.github/workflows/course.yml), so the Python stays the one place they're made.
-async function generateStudentFiles(log, token, org, repo, headSha) {
-  const s = log("Generating the students' page and form (a GitHub Actions run, about a minute)");
-  if (!headSha && await exists(token, `/repos/${org}/${repo}/contents/.github/ISSUE_TEMPLATE/register.yml`)) {
-    return s("Students' page and form already generated");
-  }
-  const since = Date.now() - 60000;
-  if (!headSha) {
-    await gh(token, "POST", `/repos/${org}/${repo}/actions/workflows/course.yml/dispatches`, { ref: session.branch });
-  }
-  const run = await waitForRun(token, org, repo, "course.yml",
-    (r) => headSha ? r.head_sha === headSha : Date.parse(r.created_at) >= since,
-    (u) => s(`Generating the students' page and form: ${u}`, "run"));
-  if (run.conclusion !== "success") throw new Error(`The Course files workflow ${run.conclusion}: ${run.html_url}`);
-  s("Students' page and form generated");
-}
-
-function showDone(org, repo, tests) {
-  const link = `https://github.com/${org}/${repo}/issues/new?template=register.yml`;
-  const done = $("setupDone");
-  done.innerHTML = `<strong>Your course is ready.</strong> Give your students this link:<br><a></a><br><br>
-    Try it first with two accounts of your own${tests.length ? ` and the test numbers ${tests.slice(0, 2).join(" and ")}`
-      : " (set Test students to 2 and run this again)"}.
-    The repository is <a></a>; your settings live in its <code>course.json</code>.`;
-  const [a1, a2] = done.querySelectorAll("a");
-  a1.href = a1.textContent = link;
-  a2.href = `https://github.com/${org}/${repo}`;
-  a2.textContent = `${org}/${repo}`;
-  done.className = "done show";
-}
+// For the page's own tests: the pure parts, without a network.
+window.bedel = { parseRoster, parseListing, mergeListings, tokenUrl, readCourse, fillCourse, b64FromText,
+                 textFromB64, loadSodium, seal, checkToken, SETUP_PERMISSIONS, BOT_PERMISSIONS };

@@ -1,5 +1,9 @@
-# Publishes web/, the setup page, to GitHub Pages. Only bedel itself (the
-# template) has a page; a course made from it skips this.
+# Publishes web/ to GitHub Pages. In bedel itself (the template) that's the
+# landing page and the setup page. In a course, it's the course's own page,
+# web/manage.html, for running the course from the browser.
+#
+# A course publishes only once Pages is on with "GitHub Actions" as its source,
+# which the setup page does; until then this does nothing.
 name: Setup page
 
 on:
@@ -18,17 +22,47 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      on: ${{ steps.pages.outputs.on }}
+    steps:
+      - name: Is Pages on, published by this workflow?
+        id: pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          source=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq .build_type 2>/dev/null || true)
+          if [ "$source" = workflow ]; then
+            echo "on=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Pages isn't on with GitHub Actions as its source, so there's nothing to publish."
+          fi
+
   deploy:
-    if: github.event.repository.is_template
+    needs: check
+    if: needs.check.outputs.on == 'true'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - name: Build the site
+        env:
+          IS_TEMPLATE: ${{ github.event.repository.is_template }}
+        run: |
+          mkdir _site
+          cp -R web/. _site/
+          if [ "$IS_TEMPLATE" != true ]; then
+            # A course: its page is the front page, and it has no use for setting up.
+            mv _site/manage.html _site/index.html
+            rm _site/setup.html
+          fi
+          printf '{"repo": "%s", "template": %s}\n' "$GITHUB_REPOSITORY" "${IS_TEMPLATE:-false}" > _site/site.json
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: web
+          path: _site
       - id: deploy
         uses: actions/deploy-pages@v4

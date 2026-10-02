@@ -1,5 +1,5 @@
-// Talking to GitHub's API, straight from the browser. Nothing else is contacted.
-import sodium from "https://cdn.jsdelivr.net/npm/libsodium-wrappers@0.7.15/+esm";
+// Talking to GitHub's API, straight from the browser. Nothing else is contacted:
+// the pages' Content-Security-Policy lets them connect to api.github.com only.
 
 // The repository courses are created from. A fork of bedel can point its own
 // page at itself with ?template=owner/repo.
@@ -60,18 +60,31 @@ export const b64FromText = (text) => b64FromBytes(new TextEncoder().encode(text)
 export const textFromB64 = (b64) =>
   new TextDecoder().decode(Uint8Array.from(atob(b64.replace(/\s/g, "")), (c) => c.charCodeAt(0)));
 
-// Repository secrets are sealed with the repository's public key before they
-// leave the browser, as GitHub requires; only Actions can open them.
+// libsodium is big (2 MB) and only needed to store a secret, so it loads then.
+// It's a copy kept in web/vendor, not fetched from anywhere else.
+let sodiumReady = null;
+export function loadSodium() {
+  sodiumReady ||= import("../vendor/libsodium-wrappers.js").then(async (m) => {
+    await m.default.ready;
+    return m.default;
+  });
+  return sodiumReady;
+}
+
+// Seals a value with a repository's public key, as GitHub requires of secrets:
+// only Actions, holding the private key, can open it.
+export async function seal(publicKey, value) {
+  const sodium = await loadSodium();
+  const b64 = sodium.base64_variants.ORIGINAL;
+  return sodium.to_base64(sodium.crypto_box_seal(sodium.from_string(value), sodium.from_base64(publicKey, b64)), b64);
+}
+
 export async function setSecret(token, org, repo, name, value) {
-  await sodium.ready;
   const key = await gh(token, "GET", `/repos/${org}/${repo}/actions/secrets/public-key`);
-  const sealed = sodium.crypto_box_seal(sodium.from_string(value),
-                                        sodium.from_base64(key.key, sodium.base64_variants.ORIGINAL));
   await gh(token, "PUT", `/repos/${org}/${repo}/actions/secrets/${name}`, {
-    encrypted_value: sodium.to_base64(sealed, sodium.base64_variants.ORIGINAL), key_id: key.key_id,
+    encrypted_value: await seal(key.key, value), key_id: key.key_id,
   });
 }
-export { sodium };
 
 // Can this token do a write? An empty body: GitHub checks permission before it
 // reads the body, so a token that may gets 422 (bad request, nothing created)

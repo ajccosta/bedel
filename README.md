@@ -2,9 +2,9 @@
 
 **Group registration, per-assignment repositories and deadlines for a course on
 GitHub, run from one repository in your own organization.** A flexible,
-self-hosted alternative to GitHub Classroom and classroom50, built on nothing but
-issues, teams and GitHub Actions — so every workflow, rule and form is a file you
-can change.
+self-hosted alternative to GitHub Classroom and Classroom 50 (classroom50), built
+on nothing but issues, teams and GitHub Actions — so every workflow, rule and form
+is a file you can change.
 
 **[Set up a course in your browser →](https://ajccosta.github.io/bedel/)**
 
@@ -38,22 +38,41 @@ timetable: he lets you in, and he locks the door when time is up.
 Only student numbers ever reach GitHub: names, emails and the rest of your
 lists stay on your machine.
 
-## Compared with GitHub Classroom
+## After GitHub Classroom
 
-Like GitHub Classroom, every group gets its own repository seeded from a
-template. The difference is where it runs: bedel is plain files in a repository
-you own, inside your organization. There is no third-party app to authorize,
-nothing outside GitHub, and every rule (group size, who may register, how
-deadlines are worked out) is code you can read and change.
+GitHub [retired GitHub Classroom](https://github.blog/changelog/2026-08-27-github-classroom-deprecated/)
+on 28 August 2026, pointing teachers to partner tools such as
+[Classroom 50](https://github.com/foundation50/classroom50). Like both, bedel gives
+every group its own repository seeded from a template. The difference is where it
+runs: bedel is plain files in a repository you own, inside your organization. There
+is no app to authorize and no server, and every rule (group size, who may register,
+how deadlines are worked out) is code you can read and change.
+
+|                     | bedel | Classroom 50 |
+|---------------------|-------|--------------|
+| GitHub plan         | a free organization | Team or Enterprise (free for verified teachers) |
+| Groups              | students register against your roster, every member confirms | the first student creates the group, or you assign them |
+| Hard deadline       | repositories become read-only on the minute, by themselves | you close the assignment by hand |
+| Autograding         | not built in: add a workflow | built in |
+| Changing how it works | edit any file | the options the app offers |
 
 ## Starting a course
 
-**In your browser:** [ajccosta.github.io/bedel](https://ajccosta.github.io/bedel/)
-walks you through it. You need an organization for the course that you own; the
-page creates the course's repository from bedel, stores your roster and the bot's
-token as encrypted secrets, and writes `course.json`. It has no server: it talks
-to GitHub's API straight from your browser. It also releases assignments, which
-you can equally do from the course repository's **Actions** tab.
+**In your browser:** [ajccosta.github.io/bedel](https://ajccosta.github.io/bedel/setup.html)
+walks you through it in six steps. You create the course's organization first, so
+that both tokens it asks for can be made for that organization alone; it refuses
+classic tokens and proves each one belongs to the organization before using it.
+The page has no server, and its Content-Security-Policy lets it talk to
+`api.github.com` only. It creates the course's repository from bedel, stores your
+roster and the bot's token as encrypted secrets, and writes `course.json`.
+
+**Then, the course's own page.** Setup turns on GitHub Pages for the course
+repository, which publishes `web/manage.html` from it at
+`https://ORG.github.io/registration/`. It shows registrations, assignments,
+deadlines and whether the bot's runs succeed, without a token. With one, it
+releases assignments, changes the course, replaces the roster and renews the bot's
+token. It's your course's copy of the code, which changes only when you pull
+bedel's updates.
 
 **From a terminal:** you need `gh` (the GitHub CLI) logged in, `git`, and
 Python 3.9 or later.
