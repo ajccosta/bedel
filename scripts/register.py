@@ -250,6 +250,9 @@ def create_group(n, members, groups, classes=None):
         print(f"#{n}: could not record class claims: {e}", file=sys.stderr)
     if flagged:
         add_label(n, "class-mismatch")
+    # Only a class someone actually chose can disagree with the listing. A blank
+    # one for a student on no list is already explained in the lines above.
+    disputed = [r for r in flagged if r["claimed"]]
 
     body = (
         f"🎉 Your group is registered as **`{group['name']}`**.\n\n"
@@ -263,7 +266,7 @@ def create_group(n, members, groups, classes=None):
         + ("".join(f"- ⚠️ `{r['student']}` said **{r['claimed'] or '-'}**, "
                    f"the listing says **{r['official'] or 'no class'}** — "
                    f"we will check this; your deadline follows what you said.\n"
-                   for r in flagged) + "\n" if flagged else "")
+                   for r in disputed) + "\n" if disputed else "")
         + "If you were not yet in the organization, you have been sent an invitation by email. "
         + f"Accept it at https://github.com/orgs/{ORG}/invitation to see your repositories."
     )
