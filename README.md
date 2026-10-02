@@ -97,3 +97,5 @@ have to be merged in by hand.
 Everything about the course lives in `course.json`; everything else is the same
 for every course. The full guide, including assignments, deadlines, testing and
 resetting, is in [scripts/README.md](scripts/README.md).
+
+bedel is free software under the [MIT License](LICENSE).
