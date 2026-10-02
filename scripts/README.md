@@ -682,10 +682,14 @@ assignments, edits the course, replaces the roster and class secrets, and renews
 token. Tokens stay in the tab's memory; the page's Content-Security-Policy allows no
 connection but `api.github.com`.
 
-The setup page turns it on. A course set up from a terminal turns it on with:
+The setup page turns it on. A course set up from a terminal turns it on with the commands
+below. Step 1 stops members creating Pages, and to GitHub an owner is a member too, so the
+setting is lifted for the moment it takes and put back, as the setup page does:
 
 ```
+gh api -X PATCH orgs/ORG -F members_can_create_pages=true
 gh api -X POST repos/ORG/registration/pages -f build_type=workflow
+gh api -X PATCH orgs/ORG -F members_can_create_pages=false
 gh workflow run pages.yml -R ORG/registration
 ```
 

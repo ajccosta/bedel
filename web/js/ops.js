@@ -185,29 +185,68 @@ export async function generateStudentFiles(log, token, org, repo, headSha) {
   s("Students' page and form generated");
 }
 
-// Turns on GitHub Pages for the course repository, published by its Setup page
-// workflow (.github/workflows/pages.yml). Optional: the course works without it,
-// so a failure here is a warning. Returns the page's address, or null.
-export async function publishCoursePage(log, token, org, repo) {
-  const s = log("Publishing the course's own page, for running it from now on");
-  try {
+// GitHub Pages for the course repository, published by the workflow. Org owners
+// count as members here, so the lock-down's "members can't create Pages" stops
+// this too: when it does, it's lifted for the moment it takes and put back.
+const PAGES_SETTINGS = ["members_can_create_pages", "members_can_create_public_pages"];
+
+async function turnOnPages(token, org, repo) {
+  const enable = async () => {
     try { await gh(token, "POST", `/repos/${org}/${repo}/pages`, { build_type: "workflow" }); }
     catch (e) {
       if (e.status !== 409) throw e;   // already on: make sure it's published by the workflow
       await gh(token, "PUT", `/repos/${org}/${repo}/pages`, { build_type: "workflow" });
     }
-    const since = Date.now() - 10000;
-    await gh(token, "POST", `/repos/${org}/${repo}/actions/workflows/pages.yml/dispatches`, { ref: session.branch });
-    const run = await waitForRun(token, org, repo, "pages.yml",
-      (r) => r.event === "workflow_dispatch" && Date.parse(r.created_at) >= since,
-      (u) => s(`Publishing the course's own page: ${u}`, "run"));
-    if (run.conclusion !== "success") throw new Error(`its workflow ${run.conclusion}: ${run.html_url}`);
-  } catch (e) {
-    s(`The course's own page isn't published (${e.message}). The course works without it; ` +
-      "turn it on later under the repository's Settings → Pages → Source: GitHub Actions.", "warn");
-    return null;
+  };
+  try { return await enable(); }
+  catch (e) { if (!/disabled Pages/i.test(e.message)) throw e; }
+
+  const current = await gh(token, "GET", `/orgs/${org}`);
+  const blocked = PAGES_SETTINGS.filter((k) => current[k] === false);
+  if (!blocked.length) throw new Error("the organization doesn't allow Pages, and this page can't change that");
+  try { await gh(token, "PATCH", `/orgs/${org}`, Object.fromEntries(blocked.map((k) => [k, true]))); }
+  catch (e) {
+    throw new Error(`the organization doesn't let members create Pages, and lifting that for a moment failed (${e.message}). ` +
+      "Allow Pages under Member privileges, try again, then turn it back off");
   }
-  const url = coursePageUrl(org, repo);
-  s(`The course's own page is at ${url}`);
-  return url;
+  try {
+    await enable();
+  } finally {
+    try { await gh(token, "PATCH", `/orgs/${org}`, Object.fromEntries(blocked.map((k) => [k, false]))); }
+    catch (e) {
+      throw new Error(`Pages was allowed for a moment and couldn't be disallowed again (${e.message}). ` +
+        "Turn \"Pages creation\" off under the organization's Settings → Member privileges.");
+    }
+  }
+}
+
+// Turns on the course's own page and publishes it. Optional: the course works
+// without it, so a failure is a warning, with a button to try again and links
+// to the settings on GitHub. Returns the page's address, or null; a later
+// success from the button is passed to `published`.
+export async function publishCoursePage(log, token, org, repo, published = () => {}) {
+  const s = log("Publishing the course's own page, for running it from now on");
+  const attempt = async () => {
+    s("Publishing the course's own page, for running it from now on", "run");
+    try {
+      await turnOnPages(token, org, repo);
+      const since = Date.now() - 10000;
+      await gh(token, "POST", `/repos/${org}/${repo}/actions/workflows/pages.yml/dispatches`, { ref: session.branch });
+      const run = await waitForRun(token, org, repo, "pages.yml",
+        (r) => r.event === "workflow_dispatch" && Date.parse(r.created_at) >= since,
+        (u) => s(`Publishing the course's own page: ${u}`, "run"));
+      if (run.conclusion !== "success") throw new Error(`its workflow ${run.conclusion}: ${run.html_url}`);
+    } catch (e) {
+      s(`The course's own page isn't published: ${e.message}. The course works without it.`, "warn", [
+        { label: "Try again", run: async () => { const url = await attempt(); if (url) published(url); } },
+        { label: "Pages settings ↗", href: `https://github.com/${org}/${repo}/settings/pages` },
+        { label: "Member privileges ↗", href: `https://github.com/organizations/${org}/settings/member_privileges` },
+      ]);
+      return null;
+    }
+    const url = coursePageUrl(org, repo);
+    s(`The course's own page is at ${url}`, "ok", [{ label: "Open it ↗", href: url }]);
+    return url;
+  };
+  return attempt();
 }

@@ -9,16 +9,49 @@ export function setStatus(id, text, kind = "") {
 }
 
 // A list of steps that fill in as they run: log("doing x") adds a line and
-// returns a function that rewrites it when the step finishes.
+// returns a function that rewrites it when the step finishes. Either can take
+// actions to offer under the line: {label, href} opens a page, {label, run}
+// is a button that runs `run` (and is disabled while it does).
 export function logger(listId) {
   const list = $(listId);
   list.innerHTML = "";
-  return (text, kind = "run") => {
-    const li = document.createElement("li");
+  const write = (li, text, kind, actions) => {
     li.className = kind;
-    li.textContent = text;
+    li.textContent = "";
+    const body = document.createElement("div");
+    body.textContent = text;
+    li.append(body);
+    if (!actions?.length) return;
+    const row = document.createElement("div");
+    row.className = "actions";
+    for (const a of actions) {
+      if (a.href) {
+        const link = document.createElement("a");
+        link.className = "btn small";
+        link.href = a.href;
+        link.target = "_blank";
+        link.rel = "noopener";
+        link.textContent = a.label;
+        row.append(link);
+      } else {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "btn small primary";
+        b.textContent = a.label;
+        b.onclick = async () => {
+          b.disabled = true;
+          try { await a.run(); } finally { b.disabled = false; }
+        };
+        row.append(b);
+      }
+    }
+    li.append(row);
+  };
+  return (text, kind = "run", actions) => {
+    const li = document.createElement("li");
     list.append(li);
-    return (t, k = "ok") => { li.textContent = t; li.className = k; };
+    write(li, text, kind, actions);
+    return (t, k = "ok", acts) => write(li, t, k, acts);
   };
 }
 

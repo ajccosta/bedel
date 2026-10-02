@@ -226,3 +226,4 @@ ul.health li.bad::before { content: "✗ "; }
 .tabs button[aria-selected="true"] { border-color: var(--accent); color: var(--text); font-weight: 600; background: var(--accent-soft); }
 #studentLink { width: min(560px, 100%); }
 #tools { margin-top: 24px; }
+ol.log li > div.actions { grid-column: 2; display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }

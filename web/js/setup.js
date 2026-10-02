@@ -194,7 +194,7 @@ async function runSetup() {
   // start before the secrets they need.
   const headSha = await ops.writeCourse(log, token, org, repo, course);
   await ops.generateStudentFiles(log, token, org, repo, headSha);
-  const page = await ops.publishCoursePage(log, token, org, repo);
+  const page = await ops.publishCoursePage(log, token, org, repo, (url) => showDone(org, repo, tests, url));
   showDone(org, repo, tests, page);
 }
 
