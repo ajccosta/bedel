@@ -155,7 +155,8 @@ its own. All of them take the org as the first argument and have a `--help`.
    and every group gets the assignment's own soft deadline. `number_hint` is optional:
    what students call their number, shown on the form.
 
-   From that it generates `.github/README.md` (the students' page),
+   From that it generates `.github/README.md` (the students' page, with a link to the
+   course's page once that is published),
    `.github/ISSUE_TEMPLATE/register.yml` (the form) and `config.yml` (no blank issues),
    then offers to commit and push all four, because the bot only runs what is on the
    default branch. Every question has a flag for unattended runs, e.g.
@@ -694,7 +695,8 @@ gh workflow run pages.yml -R ORG/registration
 ```
 
 Until Pages is on with *GitHub Actions* as its source, the workflow checks, finds nothing to
-do and stops. Any course can also be opened from bedel's own copy:
+do and stops. Once it has published, the *Course files* workflow runs again and links the
+page from the students' page, `.github/README.md`, so students and staff can find it. Any course can also be opened from bedel's own copy:
 `https://ajccosta.github.io/bedel/manage.html?repo=ORG/registration`.
 
 ## Getting bedel's updates

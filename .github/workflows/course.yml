@@ -4,12 +4,16 @@ name: Course files
 # whenever course.json changes, so editing that one file (by hand, from GitHub's
 # web editor or from the bedel setup page) is all a change takes.
 # scripts/setup/06_course.sh does the same on your machine; when it already has,
-# this finds nothing to do.
+# this finds nothing to do. It runs again after the course's page is published,
+# which adds a link to that page.
 
 on:
   push:
     branches: [main]
     paths: [course.json]
+  workflow_run:
+    workflows: ["Setup page"]
+    types: [completed]
   workflow_dispatch:
 
 concurrency:
@@ -18,9 +22,12 @@ concurrency:
 
 permissions:
   contents: write
+  pages: read
 
 jobs:
   render:
+    # After a page deploy, only once it worked.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -39,8 +46,12 @@ jobs:
           python-version: "3.12"
       - name: Generate and commit
         if: steps.course.outputs.ready
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          python scripts/setup/course.py render --repo "$GITHUB_REPOSITORY"
+          # The course's page, when Pages publishes it, gets a link on the students' page.
+          page=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq 'select(.build_type == "workflow") | .html_url' 2>/dev/null || true)
+          python scripts/setup/course.py render --repo "$GITHUB_REPOSITORY" ${page:+--page "$page"}
           git add -- .github/README.md .github/ISSUE_TEMPLATE
           if git diff --cached --quiet; then
             echo "Already up to date."

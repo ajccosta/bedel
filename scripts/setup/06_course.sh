@@ -64,7 +64,9 @@ TARGET="$ORG/$REPO"
 # --yes means unattended: keep what is in course.json rather than asking.
 if [ "$ASSUME_YES" = "1" ]; then EDIT+=(--keep); fi
 python3 "$HERE/course.py" edit ${EDIT[@]+"${EDIT[@]}"}
-python3 "$HERE/course.py" render --repo "$TARGET" | sed "s/^/${GREEN}✓${R} /"
+# The course's page, when Pages publishes it, gets a link on the students' page.
+PAGE=$(gh api "repos/$TARGET/pages" --jq 'select(.build_type == "workflow") | .html_url' 2>/dev/null || true)
+python3 "$HERE/course.py" render --repo "$TARGET" ${PAGE:+--page "$PAGE"} | sed "s/^/${GREEN}✓${R} /"
 
 FILES=(course.json .github/README.md .github/ISSUE_TEMPLATE/register.yml .github/ISSUE_TEMPLATE/config.yml)
 if [ -z "$(git -C "$ROOT" status --porcelain -- "${FILES[@]}")" ]; then

@@ -4,7 +4,7 @@
     course.py edit [--keep] [--name NAME] [--min N] [--max N] [--timezone TZ]
                    [--class "P1 tuesday 16:00 Lab 114"]... [--no-classes]
                    [--number-hint TEXT]
-    course.py render --repo ORG/REPO
+    course.py render --repo ORG/REPO [--page URL]
 
 `edit` asks for anything not given on the command line (Enter keeps what is
 there) and writes course.json; --keep asks nothing. `render` writes, from course.json:
@@ -165,7 +165,7 @@ def edit(args):
 
 # ---------- rendering ----------
 
-def readme(c, repo):
+def readme(c, repo, page=None):
     hint = c.get("number_hint")
     number = f"{hint}, digits only" if hint else "digits only"
     classes = bool(c["classes"])
@@ -176,6 +176,14 @@ def readme(c, repo):
         "",
         f"### [→ Open a registration issue](https://github.com/{repo}/issues/new?template=register.yml)",
         "",
+    ]
+    if page:
+        lines += [
+            f"**[The course's page]({page})** shows the assignments, their deadlines and",
+            "how many groups have registered. Staff run the course from there too.",
+            "",
+        ]
+    lines += [
         "Fill in **every** member of the group, including yourself:",
         "",
         f"- **student number** — {number}",
@@ -294,7 +302,9 @@ def render(args):
     if not re.fullmatch(r"[\w.-]+/[\w.-]+", args.repo or ""):
         sys.exit("render needs --repo ORG/REPO, for the links students click.")
     c = load_course()
-    write(README, readme(c, args.repo))
+    if args.page and not re.fullmatch(r"https://[^\s()]+", args.page):
+        sys.exit(f"--page wants the page's https:// address, got '{args.page}'.")
+    write(README, readme(c, args.repo, args.page))
     write(FORM, form(c))
     write(FORM_CONFIG, "blank_issues_enabled: false\n")
 
@@ -314,6 +324,7 @@ def main():
     e.add_argument("--number-hint", help="what students call their number, e.g. 'your *Nº*'")
     r = sub.add_parser("render")
     r.add_argument("--repo")
+    r.add_argument("--page", help="the course's page, when it is published, to link to")
     args = ap.parse_args()
     (edit if args.cmd == "edit" else render)(args)
 
