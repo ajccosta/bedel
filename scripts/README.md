@@ -736,6 +736,22 @@ gh api -X PATCH orgs/ORG -F members_can_create_pages=false
 gh workflow run pages.yml -R ORG/registration
 ```
 
+It opens by asking whether you're a student or a teacher, and remembers the answer in that
+browser. **Students** see the overview, the assignments and their deadlines, and *My group*:
+with a read-only key of their own, each of their group's repositories with its commits,
+who made them, the last push and how many commits came after their soft deadline. GitHub
+gives that key the student's own access, so it can't see any other group's repositories.
+For students' keys to work without you approving each one, choose *Do not require
+administrator approval* under the organization's **Settings → Personal access tokens**,
+once. **Teachers** see everything, and change things with a token as above. The choice
+protects nothing on its own: every change still needs an owner's token.
+
+So that students' visits don't each spend GitHub's 60-an-hour allowance for pages without
+a token, which a class on one network would use up in minutes, the page is published with
+`data.json`: the course, its assignments and how many groups have registered, all public
+already (`scripts/site_data.py`). It's refreshed when `course.json` or an assignment
+changes, and after registrations and releases, republishing only when it has changed.
+
 Until Pages is on with *GitHub Actions* as its source, the workflow checks, finds nothing to
 do and stops. Once it has published, the *Course files* workflow runs again and links the
 page from the students' page, `.github/README.md`, so students and staff can find it. Any course can also be opened from bedel's own copy:

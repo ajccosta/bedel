@@ -244,3 +244,27 @@ dl.deadlines dd { margin: 0; }
 .asg .edit { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 4px; }
 .asg details.groups { margin-top: 14px; }
 .asg details.groups .table-scroll { margin-top: 8px; }
+
+/* ---------- students and teachers ---------- */
+:root[data-role="student"] .teacher-only, :root[data-role="teacher"] .student-only,
+:root:not([data-role="student"]):not([data-role="teacher"]) :is(.student-only, .teacher-only) { display: none !important; }
+.who { padding-top: 32px; }
+.who-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 16px; }
+.choice {
+  display: grid; gap: 6px; text-align: left; font: inherit; color: var(--text); cursor: pointer;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 22px;
+}
+.choice:hover { border-color: var(--accent); }
+.choice strong { font-size: 1.3rem; }
+.choice span { color: var(--muted); font-size: .95rem; }
+.role-line { color: var(--muted); font-size: .92rem; margin: 0 0 12px; }
+.linkish { border: 0; background: none; padding: 0; font: inherit; color: var(--accent); cursor: pointer; text-decoration: underline; }
+.asg h4 { margin: 16px 0 8px; font-size: .95rem; }
+.asg .stats { margin: 4px 0 14px; }
+.asg .stat strong { font-size: 1.4rem; }
+ul.bars { list-style: none; padding: 0; margin: 0 0 8px; display: grid; gap: 6px; font-size: .92rem; }
+ul.bars li { display: grid; grid-template-columns: minmax(90px, 160px) 1fr 3ch; gap: 10px; align-items: center; }
+ul.bars .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+ul.bars .bar { height: 8px; border-radius: 4px; background: var(--surface-2); position: relative; overflow: hidden; }
+ul.bars .bar::after { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--w); background: var(--accent); border-radius: 4px; }
+ul.bars .n { text-align: right; color: var(--muted); }

@@ -9,11 +9,13 @@ import { initStudentInputs } from "./students.js";
 import { initAssignmentForm, loadAssignments } from "./assignments.js";
 import { release } from "./release.js";
 import { renderAssignments, stateOf, forgetGroups, keepLog } from "./asgpage.js";
+import { loadMine, renderMine, studentTokenUrl } from "./student.js";
 import { ctx, session, students } from "./state.js";
 import * as ops from "./ops.js";
 
 const REPO_RE = /^[A-Za-z0-9-]+\/[\w.-]+$/;
 let course = null;
+let defsNow = [];     // the assignments as last read, for the student's view
 
 // Which course: ?repo=ORG/REPO, or the repository this copy of the page was
 // published from (site.json, written by .github/workflows/pages.yml).
@@ -51,13 +53,31 @@ function el(tag, text, cls) {
 }
 function linkTo(href, text) { const a = el("a", text); a.href = href; return a; }
 
+// The course's public data, published with the page by pages.yml, so a visit
+// without a token doesn't spend GitHub's 60-requests-an-hour allowance, which a
+// class on one network would use up in minutes. Only for this course's own page.
+async function publishedData() {
+  try {
+    const r = await fetch("data.json", { cache: "no-store" });
+    if (!r.ok) return null;
+    const d = await r.json();
+    return d.repo?.toLowerCase() === `${ctx.org}/${ctx.repo}`.toLowerCase() ? d : null;
+  } catch { return null; }
+}
+
 async function loadOverview() {
   const { org, repo, token } = ctx;
   const t = token || null;
-  const info = await gh(t, "GET", `/repos/${org}/${repo}`);
-  ctx.org = info.owner.login; ctx.repo = info.name;
-  session.branch = info.default_branch || "main";
-  course = await ops.readCourseFile(t, ctx.org, ctx.repo);
+  const published = t ? null : await publishedData();
+  if (published) {
+    [ctx.org, ctx.repo] = published.repo.split("/");
+    course = published.course;
+  } else {
+    const info = await gh(t, "GET", `/repos/${org}/${repo}`);
+    ctx.org = info.owner.login; ctx.repo = info.name;
+    session.branch = info.default_branch || "main";
+    course = await ops.readCourseFile(t, ctx.org, ctx.repo);
+  }
   const base = `https://github.com/${ctx.org}/${ctx.repo}`;
 
   $("courseName").textContent = course?.name || `${ctx.org}/${ctx.repo}`;
@@ -74,18 +94,28 @@ async function loadOverview() {
     meta.append(" · not set up yet: there's no course.json. Set it up from bedel's setup page.");
   }
   $("studentLink").value = `${base}/issues/new?template=register.yml`;
+  $("registerBtn").href = $("studentLink").value;
+  $("patPolicy").href = `https://github.com/organizations/${ctx.org}/settings/personal-access-tokens`;
+  $("studentTokenLink").href = studentTokenUrl(ctx.org);
   for (const e of document.querySelectorAll(".orgname")) e.textContent = ctx.org;
   for (const e of document.querySelectorAll(".reponame")) e.textContent = `${ctx.org}/${ctx.repo}`;
   refreshLinks();
 
-  const [registered, open, defs, register, deadlines] = await Promise.all([
-    gh(t, "GET", `/repos/${ctx.org}/${ctx.repo}/issues?labels=registered&state=all&per_page=100`),
-    gh(t, "GET", `/repos/${ctx.org}/${ctx.repo}/issues?labels=registration&state=open&per_page=100`),
+  // The bot's runs are for teachers: a student's visit doesn't spend requests on them.
+  const teacher = role() === "teacher";
+  const [registered, waiting, defs, register, deadlines] = published ? [
+    published.registered, published.waiting, published.assignments,
+    teacher ? lastRun(t, "register.yml") : null, teacher ? lastRun(t, "deadlines.yml") : null,
+  ] : await Promise.all([
+    gh(t, "GET", `/repos/${ctx.org}/${ctx.repo}/issues?labels=registered&state=all&per_page=100`).then((x) => x.length),
+    gh(t, "GET", `/repos/${ctx.org}/${ctx.repo}/issues?labels=registration&state=open&per_page=100`)
+      .then((x) => x.filter((i) => !i.labels.some((l) => l.name === "registered")).length),
     loadAssignments(),
-    lastRun(t, "register.yml"),
-    lastRun(t, "deadlines.yml"),
+    teacher ? lastRun(t, "register.yml") : null,
+    teacher ? lastRun(t, "deadlines.yml") : null,
   ]);
-  const waiting = open.filter((i) => !i.labels.some((l) => l.name === "registered"));
+  if (published) session.assignments = defs.map((d) => d.name);
+  defsNow = defs;
 
   const stats = $("stats");
   stats.innerHTML = "";
@@ -95,14 +125,14 @@ async function loadOverview() {
     d.append(el("strong", String(n) + (n === 100 ? "+" : "")), el("span", label));
     stats.append(d);
   };
-  stat(registered.length, registered.length === 1 ? "group registered" : "groups registered",
+  stat(registered, registered === 1 ? "group registered" : "groups registered",
     `${base}/issues?q=label%3Aregistered`);
-  stat(waiting.length, "waiting for members to confirm", `${base}/issues?q=is%3Aopen+label%3Aregistration`);
+  stat(waiting, "waiting for members to confirm", `${base}/issues?q=is%3Aopen+label%3Aregistration`);
   stat(defs.length, defs.length === 1 ? "assignment" : "assignments", `${base}/tree/${session.branch}/assignments`);
 
   const health = $("health");
   health.innerHTML = "";
-  for (const [what, run] of [["Registrations", register], ["Deadlines", deadlines]]) {
+  for (const [what, run] of teacher ? [["Registrations", await register], ["Deadlines", await deadlines]] : []) {
     const li = el("li");
     if (!run) { li.className = "warn"; li.append(`${what}: hasn't run yet.`); }
     else if (run.status !== "completed") { li.className = "run"; li.append(`${what}: running now. `, linkTo(run.html_url, "Its log")); }
@@ -189,7 +219,9 @@ async function signIn() {
 // Two pages in one, Overview and Assignments, so a token checked on one is
 // there on the other: it lives only in this tab's memory.
 function showView() {
-  const view = location.hash === "#assignments" ? "assignments" : "overview";
+  const views = role() === "student" ? ["assignments", "mine"] : ["assignments"];
+  const asked = location.hash.slice(1);
+  const view = views.includes(asked) ? asked : "overview";
   for (const p of document.querySelectorAll("[data-view-panel]")) p.hidden = p.dataset.viewPanel !== view;
   for (const a of document.querySelectorAll("[data-view]")) {
     if (a.dataset.view === view) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
@@ -231,6 +263,35 @@ async function saveBot() {
   $("botToken").value = "";
 }
 
+// ---------- who's looking ----------
+// Students and teachers see different pages. Nothing is protected by this - the
+// teacher's tools still need an owner's token - it's what each of them needs to see.
+let chosen = null;
+function role() { return chosen; }
+function setRole(r) {
+  chosen = r;
+  try { if (r) localStorage.setItem("bedel-role", r); else localStorage.removeItem("bedel-role"); } catch {}
+  document.documentElement.dataset.role = r || "";
+  $("who").hidden = !!r;
+  $("roleContent").hidden = !r;
+  $("views").hidden = !r;
+  $("roleLine").hidden = !r;
+  $("roleName").textContent = r || "";
+  showView();
+}
+
+async function showMine() {
+  setStatus("studentStatus", "Looking…");
+  try {
+    const data = await loadMine($("studentToken").value.trim(), defsNow);
+    renderMine($("mineOut"), data, when);
+    $("mineSignin").hidden = true;
+    setStatus("studentStatus", "");
+  } catch (e) {
+    setStatus("studentStatus", e.message, "bad");
+  }
+}
+
 // ---------- wiring ----------
 initPage();
 initCourseForm();
@@ -247,6 +308,10 @@ $("copyLink").onclick = async () => {
   catch { $("studentLink").select(); }
 };
 $("checkCourse").onclick = signIn;
+$("checkStudent").onclick = showMine;
+$("studentToken").addEventListener("keydown", (e) => { if (e.key === "Enter") showMine(); });
+for (const b of document.querySelectorAll("[data-role]")) b.onclick = async () => { setRole(b.dataset.role); await refresh(); };
+$("switchRole").onclick = () => { setRole(null); scrollTo(0, 0); };
 $("courseToken").addEventListener("keydown", (e) => { if (e.key === "Enter") signIn(); });
 $("courseDays").addEventListener("input", refreshLinks);
 $("botDays").addEventListener("input", refreshLinks);
@@ -264,5 +329,8 @@ if (!repo) $("pick").hidden = false;
 else {
   [ctx.org, ctx.repo] = repo.split("/");
   $("course").hidden = false;
+  let remembered = null;
+  try { remembered = localStorage.getItem("bedel-role"); } catch {}
+  setRole(["student", "teacher"].includes(remembered) ? remembered : null);
   await refresh();
 }

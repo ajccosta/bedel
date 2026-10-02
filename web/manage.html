@@ -20,7 +20,7 @@
       bedel
     </a>
     <div class="links">
-      <a href="#changes">Make changes</a>
+      <a href="#changes" class="teacher-only">Make changes</a>
       <a data-template="" href="https://github.com/ajccosta/bedel">GitHub</a>
       <button class="theme" id="themeBtn" type="button" aria-label="Switch colour theme">◐</button>
     </div>
@@ -42,21 +42,40 @@
     <header class="course-head">
       <h1 class="page-title" id="courseName">…</h1>
       <p class="sub" id="courseMeta"></p>
-      <div class="row">
+      <p class="role-line" id="roleLine" hidden>You're viewing this as a <strong id="roleName"></strong>.
+        <button class="linkish" id="switchRole" type="button">Switch</button></p>
+      <div class="row teacher-only">
         <input id="studentLink" class="wide mono" readonly aria-label="The link for students">
         <button class="btn small" id="copyLink" type="button">Copy the students' link</button>
       </div>
-      <nav class="views" aria-label="Pages">
+      <nav class="views" aria-label="Pages" id="views" hidden>
         <a href="#" data-view="overview">Overview</a>
         <a href="#assignments" data-view="assignments">Assignments</a>
+        <a href="#mine" data-view="mine" class="student-only">My group</a>
       </nav>
     </header>
+
+    <section class="who" id="who" hidden>
+      <h2>Are you a student or a teacher?</h2>
+      <div class="who-choices">
+        <button class="choice" type="button" data-role="student"><strong>Student</strong>
+          <span>Register your group, see the assignments and deadlines, and how your group's repositories are doing.</span></button>
+        <button class="choice" type="button" data-role="teacher"><strong>Teacher</strong>
+          <span>Everything about the course: release assignments, change deadlines, the roster and the bot.</span></button>
+      </div>
+    </section>
+
+    <div id="roleContent" hidden>
 
     <div data-view-panel="overview">
     <section>
       <h2>Now</h2>
+      <p class="student-only"><a class="btn primary" id="registerBtn">Register your group</a></p>
       <div class="stats" id="stats"></div>
-      <ul class="health" id="health"></ul>
+      <ul class="health teacher-only" id="health"></ul>
+      <p class="hint teacher-only">Students can see their own group's repositories under <em>My group</em>, with a read-only key.
+        For those keys to work without you approving each one, choose <em>Do not require administrator approval</em> in
+        <a id="patPolicy" target="_blank" rel="noopener">the organization's token settings ↗</a>, once.</p>
       <div class="status" id="overviewStatus"></div>
     </section>
 
@@ -76,7 +95,7 @@
     <div data-view-panel="assignments" hidden>
     <section>
       <h2>Assignments</h2>
-      <p class="sub" id="asgSignedOut">Sign in below to change deadlines, see each group's repository, or release an assignment.</p>
+      <p class="sub teacher-only" id="asgSignedOut">Sign in below to change deadlines, see each group's repository, or release an assignment.</p>
       <div class="asg-list" id="asgList"></div>
       <p class="hint" id="asgNone" hidden>No assignments yet.</p>
     </section>
@@ -125,7 +144,38 @@
     </section>
     </div>
 
-    <section id="changes">
+    <div data-view-panel="mine" hidden>
+    <section>
+      <h2>Your group</h2>
+      <p class="sub">How your group's repositories are doing: commits, who made them, and where you stand against your
+        deadlines. Your repositories are private, so this needs a key from you.</p>
+      <div id="mineSignin">
+        <div class="tokenbox">
+          <h3>About this key</h3>
+          <ul>
+            <li><strong>It can only read.</strong> It's made read-only, so nothing can be changed with it.</li>
+            <li><strong>It sees only what you can see.</strong> GitHub gives it your own access in <span class="orgname"></span>,
+              no more: your group's repositories, not anyone else's, and nothing outside <span class="orgname"></span>.</li>
+            <li><strong>It goes only to GitHub.</strong> It stays in this tab's memory and is sent only to <code>api.github.com</code>;
+              closing the tab forgets it. It expires in 30 days, or delete it on GitHub any time.</li>
+          </ul>
+        </div>
+        <ol class="howto">
+          <li>Accept the invitation to <span class="orgname"></span> first, if you haven't: GitHub emailed it when your group was registered.</li>
+          <li><a class="btn small" id="studentTokenLink" target="_blank" rel="noopener">Open GitHub's token page, filled in ↗</a></li>
+          <li>Check that <strong>Resource owner</strong> says <strong class="orgname"></strong>, choose <strong>All repositories</strong>, generate it and copy it.</li>
+        </ol>
+        <div class="row">
+          <label>Key <input id="studentToken" class="wide" type="password" placeholder="github_pat_…" autocomplete="off" spellcheck="false"></label>
+          <button class="btn primary" id="checkStudent" type="button">Show my group</button>
+        </div>
+        <div class="status" id="studentStatus"></div>
+      </div>
+      <div id="mineOut"></div>
+    </section>
+    </div>
+
+    <section id="changes" class="teacher-only">
       <h2>Make changes</h2>
       <p class="sub">Everything above is public, read without a token. Changing the course takes a token from an owner of
         <span class="orgname"></span>, made for this course alone.</p>
@@ -230,6 +280,7 @@
         </div>
       </div>
     </section>
+    </div>
   </div>
 </main>
 
