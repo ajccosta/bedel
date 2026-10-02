@@ -50,7 +50,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           # The course's page, when Pages publishes it, gets a link on the students' page.
-          page=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq 'select(.build_type == "workflow") | .html_url' 2>/dev/null || true)
+          # gh prints GitHub's error on stdout, so a repo without Pages has to be caught by the exit code.
+          page=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq 'select(.build_type == "workflow") | .html_url' 2>/dev/null) || page=""
           python scripts/setup/course.py render --repo "$GITHUB_REPOSITORY" ${page:+--page "$page"}
           git add -- .github/README.md .github/ISSUE_TEMPLATE
           if git diff --cached --quiet; then

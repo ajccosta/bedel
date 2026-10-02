@@ -65,7 +65,8 @@ TARGET="$ORG/$REPO"
 if [ "$ASSUME_YES" = "1" ]; then EDIT+=(--keep); fi
 python3 "$HERE/course.py" edit ${EDIT[@]+"${EDIT[@]}"}
 # The course's page, when Pages publishes it, gets a link on the students' page.
-PAGE=$(gh api "repos/$TARGET/pages" --jq 'select(.build_type == "workflow") | .html_url' 2>/dev/null || true)
+# gh prints GitHub's error on stdout, so a repo without Pages has to be caught by the exit code.
+PAGE=$(gh api "repos/$TARGET/pages" --jq 'select(.build_type == "workflow") | .html_url' 2>/dev/null) || PAGE=""
 python3 "$HERE/course.py" render --repo "$TARGET" ${PAGE:+--page "$PAGE"} | sed "s/^/${GREEN}✓${R} /"
 
 FILES=(course.json .github/README.md .github/ISSUE_TEMPLATE/register.yml .github/ISSUE_TEMPLATE/config.yml)
