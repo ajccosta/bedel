@@ -21,7 +21,7 @@ function readInputs(name) {
   if (isNew && !inputs.soft_week && !inputs.soft) throw new Error(`${name} is new, so it needs a soft deadline (or None).`);
   if (isNew && !inputs.hard) throw new Error(`${name} is new, so it needs a hard deadline (or Never lock).`);
   if ($("aCarry").value) {
-    if ($("aCarry").value === name) throw new Error("Carry over from an earlier assignment, not this one.");
+    if ($("aCarry").value === name) throw new Error("Continue from an earlier assignment, not this one.");
     inputs.carry_over = $("aCarry").value;
   }
   inputs.dry_run = $("aDry").checked ? "true" : "false";
