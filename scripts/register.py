@@ -76,6 +76,9 @@ def parse_members(body):
         num = clean(fields.get(f"Member {i} - student number"))
         user = clean(fields.get(f"Member {i} - GitHub username"))
         class_ = clean(fields.get(f"Member {i} - class")).upper().replace(" ", "")
+        # An issue form writes "None" for a dropdown nobody picked from: that's blank.
+        if class_ == "NONE":
+            class_ = ""
         if not num and not user:
             continue
         if not num or not user:
