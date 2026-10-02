@@ -122,7 +122,9 @@ async function loadOverview() {
   for (const d of defs) {
     const tr = el("tr");
     const name = el("td");
-    name.append(linkTo(`https://github.com/${ctx.org}/${d.template || `${d.name}-template`}`, d.name));
+    // Groups bringing their own work have no starting files to link to.
+    if (d.own_work) name.append(el("span", d.name), el("div", "Groups' own work"));
+    else name.append(linkTo(`https://github.com/${ctx.org}/${d.template || `${d.name}-template`}`, d.name));
     const soft = el("td");
     const byClass = Object.entries(d.soft_by_class || {});
     if (byClass.length) for (const [c, iso] of byClass.sort()) soft.append(el("div", `${c}: ${when(iso)}`));

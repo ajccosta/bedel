@@ -34,6 +34,11 @@ on:
         description: "Start from each group's repository for this earlier assignment (optional)"
         required: false
         type: string
+      own_work:
+        description: "Groups bring their own work: each repository starts empty, and the announcement shows them how to push theirs in"
+        required: false
+        type: boolean
+        default: false
       dry_run:
         description: "Only show what would happen"
         required: false
@@ -80,16 +85,25 @@ jobs:
           SOFT: ${{ inputs.soft }}
           HARD: ${{ inputs.hard }}
           CARRY_OVER: ${{ inputs.carry_over }}
+          OWN_WORK: ${{ inputs.own_work }}
           DRY_RUN: ${{ inputs.dry_run }}
         run: |
-          template=${TEMPLATE:-$NAME-template}
-          # An existing assignment may be re-run to move a deadline; a new one
-          # needs its starting files to exist, or every group gets an empty repo.
-          if [ "$DRY_RUN" != "true" ] && ! gh api "repos/$ORG/$template" --silent 2>/dev/null; then
-            echo "::error::$ORG/$template doesn't exist. Create it with the starting files first (the setup page can upload a folder)."
-            exit 1
+          args=("$NAME" --repo "${REPO#*/}")
+          if [ "$OWN_WORK" = "true" ]; then
+            args+=(--own-work)
+          elif [ ! -f "assignments/$NAME.json" ]; then
+            # A new assignment needs its starting files to exist, or every group
+            # gets a repository with only a README. (Re-running an existing one,
+            # to move a deadline, keeps whatever it started from.)
+            template=${TEMPLATE:-$NAME-template}
+            if [ "$DRY_RUN" != "true" ] && ! gh api "repos/$ORG/$template" --silent 2>/dev/null; then
+              echo "::error::$ORG/$template doesn't exist. Create it with the starting files first (the course page can upload a folder), or let groups bring their own work."
+              exit 1
+            fi
+            args+=(--template "$template")
+          elif [ -n "$TEMPLATE" ]; then
+            args+=(--template "$TEMPLATE")
           fi
-          args=("$NAME" --repo "${REPO#*/}" --template "$template")
           if [ -n "$SOFT_WEEK" ]; then args+=(--soft-week "$SOFT_WEEK"); fi
           if [ -n "$SOFT" ]; then args+=(--soft "$SOFT"); fi
           if [ -n "$HARD" ]; then args+=(--hard "$HARD"); fi

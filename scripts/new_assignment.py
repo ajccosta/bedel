@@ -18,6 +18,10 @@ reads that folder to know which repos a newly registered group needs, and the
 deadline workflow reads it to know when to lock. Run `git pull` to bring your own
 checkout up to date.
 
+Students who already started on repositories of their own can bring that work in:
+with --own-work each group's repository starts empty, and the announcement shows
+them the commands that push their work into it, history and all.
+
 A new assignment must be given both deadlines; pass `none` for one you don't want
 (`--hard none` means the repos are never locked). Re-running to change the skeleton
 or a deadline is safe: existing repos are left alone, --from re-pushes the folder
@@ -35,11 +39,12 @@ import rules
 from ghlib import (ASSIGNMENT_RE, GitHub, GitHubError, assignments_dir, clone_history,
                    commit_files, default_org, ensure_repo, get_file, grant_team,
                    have_git, load_groups, load_classes, parse_deadline, push_folder,
-                   put_file, repo_empty, repo_files, repo_name, repo_paths,
-                   resolve_soft, to_dt)
+                   push_own_work, put_file, repo_empty, repo_files, repo_name,
+                   repo_paths, resolve_soft, to_dt)
 
 
-def announce(gh, org, repo, name, group, definition, carried=None, replaced=()):
+def announce(gh, org, repo, name, group, definition, carried=None, replaced=(),
+             own_work=False):
     """Open an issue in the group's repo @-mentioning its members.
 
     A mention is what actually reaches a student: GitHub emails everyone mentioned,
@@ -73,11 +78,19 @@ def announce(gh, org, repo, name, group, definition, carried=None, replaced=()):
                       + ("those files is" if len(replaced) > 1 else "that file is")
                       + " still in the commit before.")
 
+    if own_work:
+        start = (f"**{name}** is available. This repository is yours, and it starts empty "
+                 f"so you can bring in the work you've already done, history and all. "
+                 f"In a clone of the repository you've been working in, run:\n\n"
+                 + push_own_work(org, repo)
+                 + "\nFrom then on, push here. Haven't started yet? Just clone this "
+                   "repository and begin.")
+    else:
+        start = (f"**{name}** is available. This repository is yours — it already has the "
+                 f"starting files." + carry)
     body = (f"{marker}\n"
             f"{mentions}\n\n"
-            f"**{name}** is available. This repository is yours — it already has the "
-            f"starting files."
-            + carry + "\n\n"
+            + start + "\n\n"
             + ("\n".join(when) + "\n\n" if when else "")
             + "Everything you push to the default branch before the hard deadline counts. "
               "After it, pushes are refused, so don't leave it to the last minute.")
@@ -191,6 +204,10 @@ def main():
                     help="start each group\'s repo as a copy of their repo for this "
                          "earlier assignment - every commit, branch and tag - with the "
                          "new starting files committed on top")
+    ap.add_argument("--own-work", action="store_true",
+                    help="each group's repo starts empty, and the announcement shows them "
+                         "how to push in work they already have elsewhere, history and "
+                         "all; no starting files")
     ap.add_argument("--no-repos", action="store_true",
                     help="only create the template and the definition, no group repos")
     ap.add_argument("--no-announce", action="store_true",
@@ -223,6 +240,9 @@ def main():
                      "pass one.")
     if args.folder and not os.path.isdir(args.folder):
         sys.exit(f"Not a folder: {args.folder}")
+    if args.own_work and (args.folder or args.template or args.carry_over):
+        sys.exit("--own-work starts the repositories empty, so it takes no starting "
+                 "files (--from, --template) and nothing to carry over.")
     if args.carry_over:
         # Checked before anything is created: finding out halfway would leave
         # half the groups with a copy of their work and half without.
@@ -263,6 +283,13 @@ def main():
                      f"--soft-week takes any date in the week whose sessions start the "
                      f"clock; --hard takes a date or the word 'none'.")
 
+    # A re-run keeps what the assignment started from, so moving a deadline
+    # needs neither the template nor the flag again.
+    if not args.template and existing.get("template"):
+        template = existing["template"]
+    own_work = args.own_work or existing.get("own_work", False)
+    if own_work:
+        template = None
     soft_week = soft_week or existing.get("soft_week")
     soft_manual = bool(soft_given) if (soft_given or args.soft_week) \
         else existing.get("soft_manual", False)
@@ -291,7 +318,10 @@ def main():
     groups = load_groups(gh, args.org, ignore_users=[gh.get("/user")["login"]])
 
     print(f"Assignment {name} in {args.org}")
-    print(f"  template     {template}" + ("" if args.folder else "  (contents unchanged)"))
+    if own_work:
+        print("  starting     empty: each group pushes in its own work")
+    else:
+        print(f"  template     {template}" + ("" if args.folder else "  (contents unchanged)"))
     if by_class:
         print(f"  soft week     {soft_week} (each class gets "
               f"{rules.AFTER_SESSION.days} days from its own session)")
@@ -319,9 +349,10 @@ def main():
         return
 
     # 1. template repo
-    if ensure_repo(gh, args.org, template):
+    if template and ensure_repo(gh, args.org, template):
         print(f"created {template}")
-    gh.patch(f"/repos/{args.org}/{template}", {"is_template": True})
+    if template:
+        gh.patch(f"/repos/{args.org}/{template}", {"is_template": True})
     if args.folder:
         n = push_folder(gh, args.org, template, args.folder,
                         f"Contents for {name}")
@@ -340,6 +371,8 @@ def main():
         "created": existing.get("created") or datetime.datetime.now(
             datetime.timezone.utc).isoformat(timespec="seconds"),
     }
+    if own_work:
+        definition["own_work"] = True
     data = (json.dumps(definition, indent=2) + "\n").encode()
     if args.local_only:
         os.makedirs(assignments_dir(), exist_ok=True)
@@ -369,11 +402,13 @@ def main():
                                      repo, template, name)
                     if got is not None:
                         carried, replaced = args.carry_over, got
-                created = fresh if carried else ensure_repo(gh, args.org, repo, template)
+                created = fresh if carried else ensure_repo(gh, args.org, repo, template,
+                                                            empty=own_work)
                 grant_team(gh, args.org, g["slug"], repo)
                 told = (not args.no_announce
                         and announce(gh, args.org, repo, name, g, definition,
-                                     carried=carried, replaced=replaced))
+                                     carried=carried, replaced=replaced,
+                                     own_work=own_work))
                 print(f"{'created' if created else 'exists '} {repo}"
                       + (f"  (copied {carried}"
                          + (f", {len(replaced)} file(s) replaced" if replaced else "")

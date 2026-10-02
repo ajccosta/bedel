@@ -20,7 +20,8 @@ function readInputs(name) {
   else if ($("aHard").value) inputs.hard = asDeadline($("aHard").value);
   if (isNew && !inputs.soft_week && !inputs.soft) throw new Error(`${name} is new, so it needs a soft deadline (or None).`);
   if (isNew && !inputs.hard) throw new Error(`${name} is new, so it needs a hard deadline (or Never lock).`);
-  if ($("aCarry").value) {
+  if ($("aOwn").checked) inputs.own_work = "true";
+  else if ($("aCarry").value) {
     if ($("aCarry").value === name) throw new Error("Continue from an earlier assignment, not this one.");
     inputs.carry_over = $("aCarry").value;
   }
@@ -54,7 +55,7 @@ async function putStartingFiles(log, token, org, name, template, dry) {
   const files = folderFiles();
   if (!files.length) {
     if (!dry && !(await exists(token, `/repos/${org}/${template}`))) {
-      throw new Error(`${org}/${template} doesn't exist. Choose a folder with the starting files, or name a repository that has them.`);
+      throw new Error(`${org}/${template} doesn't exist. Choose a folder with the starting files, name a repository that has them, or tick "Groups bring their own work".`);
     }
     return;
   }
@@ -80,8 +81,10 @@ export async function release() {
   if (!ASSIGNMENT_RE.test(name)) throw new Error("The name must be lowercase letters, digits, - and _, like a1.");
   const inputs = readInputs(name);
   const dry = inputs.dry_run === "true";
-  inputs.template = $("aTemplate").value.trim() || `${name}-template`;
-  await putStartingFiles(log, token, org, name, inputs.template, dry);
+  if (!inputs.own_work) {
+    inputs.template = $("aTemplate").value.trim() || `${name}-template`;
+    await putStartingFiles(log, token, org, name, inputs.template, dry);
+  }
 
   const s = log(dry ? "Asking GitHub Actions for a dry run" : `Releasing ${name}`);
   const since = Date.now() - 10000;
@@ -92,6 +95,7 @@ export async function release() {
     (u) => s(`Release: ${u}`, "run"), 15);
   if (run.conclusion !== "success") throw new Error(`The release ${run.conclusion}. What went wrong is in its log: ${run.html_url}`);
   s(dry ? `Dry run finished. What would happen is in its log: ${run.html_url}`
-        : `${name} released: every registered group has its repository and an issue about it. Log: ${run.html_url}`);
+        : `${name} released: every registered group has its repository and an issue about it`
+          + (inputs.own_work ? ", with the commands to push their work in" : "") + `. Log: ${run.html_url}`);
   await loadAssignments();
 }

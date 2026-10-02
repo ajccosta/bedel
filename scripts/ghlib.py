@@ -167,16 +167,30 @@ def load_groups(gh, org, ignore_users=()):
     return sorted(groups, key=lambda g: g["number"])
 
 
-def ensure_repo(gh, org, name, template=None):
-    """Create a private repo (from template if it exists). Returns True if created."""
+def ensure_repo(gh, org, name, template=None, empty=False):
+    """Create a private repo: from the template if it exists, else with a README,
+    or with nothing at all when `empty`, for a group pushing in work of its own
+    (anything already there would make their push a conflict). Returns True if created."""
     if gh.exists(f"/repos/{org}/{name}"):
         return False
-    if template and gh.exists(f"/repos/{org}/{template}"):
+    if empty:
+        gh.post(f"/orgs/{org}/repos", {"name": name, "private": True, "auto_init": False})
+    elif template and gh.exists(f"/repos/{org}/{template}"):
         gh.post(f"/repos/{org}/{template}/generate",
                 {"owner": org, "name": name, "private": True})
     else:
         gh.post(f"/orgs/{org}/repos", {"name": name, "private": True, "auto_init": True})
     return True
+
+
+def push_own_work(org, repo):
+    """The commands, as Markdown, that push work a group already has elsewhere
+    into its empty assignment repository: every branch and tag, history and all."""
+    return ("```\n"
+            f"git remote add course https://github.com/{org}/{repo}.git\n"
+            "git push course --all\n"
+            "git push course --tags\n"
+            "```\n")
 
 
 def grant_team(gh, org, slug, repo, permission="push", attempts=6):

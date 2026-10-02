@@ -17,8 +17,8 @@ import sys
 
 import rules
 from ghlib import (GitHub, GitHubError, default_org, ensure_repo, grant_team,
-                   load_assignments, load_groups, load_classes, now, record_claims,
-                   repo_name, sort_students, to_dt)
+                   load_assignments, load_groups, load_classes, now, push_own_work,
+                   record_claims, repo_name, sort_students, to_dt)
 
 ORG = default_org()
 REPO = os.environ["REPO"]
@@ -224,10 +224,12 @@ def create_group(n, members, groups, classes=None):
         admin.put(f"/orgs/{ORG}/teams/{group['slug']}/memberships/{user}", {"role": "member"})
         group["users"].add(user.lower())
 
-    links = []
+    links, own = [], []
     for a in load_assignments(admin, REPO):
         repo = repo_name(group["name"], a["name"])
-        ensure_repo(admin, ORG, repo, a.get("template"))
+        ensure_repo(admin, ORG, repo, a.get("template"), empty=a.get("own_work", False))
+        if a.get("own_work"):
+            own.append(repo)
         # A group registering after an assignment closed gets it read-only.
         hard = to_dt(a.get("hard_deadline"))
         closed = bool(hard and now() >= hard)
@@ -249,6 +251,9 @@ def create_group(n, members, groups, classes=None):
     body = (
         f"🎉 Your group is registered as **`{group['name']}`**.\n\n"
         + ("Your repositories:\n" + "\n".join(links) + "\n\n" if links else "")
+        + "".join(f"**{r}** starts empty, so you can bring in the work you've already done, "
+                  f"history and all. In a clone of the repository you've been working in, run:\n\n"
+                  + push_own_work(ORG, r) + "\n" for r in own)
         + ("Your class, which your soft deadlines follow:\n"
            + "".join(f"- `{r['student']}` → **{r['used'] or '—'}**{WHERE_FROM.get(r['status'], '')}\n"
                      for r in rows) + "\n" if rows else "")

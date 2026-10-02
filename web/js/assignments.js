@@ -53,6 +53,13 @@ export function initAssignmentForm() {
   $("aSoftMode").addEventListener("change", () => { softModeChosen = true; refreshSoftModes(); });
   refreshSoftModes();
   $("aNoHard").addEventListener("change", () => { $("aHard").disabled = $("aNoHard").checked; });
+  // Bringing their own work means an empty repository: no starting files, nothing carried over.
+  $("aOwn").addEventListener("change", () => {
+    const own = $("aOwn").checked;
+    for (const id of ["aFolder", "aTemplate", "aCarry"]) $(id).disabled = own;
+    for (const id of ["aStart", "folderStatus", "aCarryLabel"]) $(id).hidden = own;
+    $("aOwnHint").hidden = !own;
+  });
   $("aFolder").addEventListener("change", () => {
     const files = folderFiles();
     const big = files.filter((f) => f.file.size > MAX_BLOB).length;

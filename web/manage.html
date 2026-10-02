@@ -120,6 +120,13 @@
             Release an existing assignment again to change its deadlines; its repositories are left as they are.</p>
           <div class="row">
             <label>Name <input id="aName" placeholder="a1" autocomplete="off" spellcheck="false"></label>
+          </div>
+          <div class="row">
+            <label class="check"><input id="aOwn" type="checkbox"> Groups bring their own work</label>
+          </div>
+          <p class="hint" id="aOwnHint" hidden>Each group gets an empty repository. The issue announcing it shows them
+            the commands that push in the work they already have, history and all. Groups that haven't started just clone it.</p>
+          <div class="row" id="aStart">
             <label>Starting files: a folder <input id="aFolder" type="file" webkitdirectory multiple></label>
             <label>…or an existing repository <input id="aTemplate" placeholder="a1-template" autocomplete="off" spellcheck="false"></label>
           </div>
@@ -140,7 +147,7 @@
             <label class="check"><input id="aNoHard" type="checkbox"> Never lock</label>
           </div>
           <div class="row">
-            <label>Continue from an earlier assignment <select id="aCarry"><option value="">No — start from the files only</option></select>
+            <label id="aCarryLabel">Continue from an earlier assignment <select id="aCarry"><option value="">No — start from the files only</option></select>
               <span class="hint">Each group's new repository starts as a copy of their repository for that assignment, history and all, with your starting files added on top.</span></label>
             <label class="check"><input id="aDry" type="checkbox"> Dry run (only show what would happen)</label>
           </div>

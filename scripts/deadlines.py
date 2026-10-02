@@ -53,7 +53,13 @@ def mark_late_commits(gh, org, repo, soft):
     if not soft:
         return 0
     marked = 0
-    for c in gh.paginate(f"/repos/{org}/{repo}/commits?since={iso_z(soft)}"):
+    try:
+        late = gh.paginate(f"/repos/{org}/{repo}/commits?since={iso_z(soft)}")
+    except GitHubError as e:
+        if e.status == 409:   # still empty: a group that never pushed its work in
+            return 0
+        raise
+    for c in late:
         try:
             current = gh.get(f"/repos/{org}/{repo}/commits/{c['sha']}/status")
             if any(st.get("context") == LATE_CONTEXT

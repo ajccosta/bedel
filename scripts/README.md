@@ -185,8 +185,8 @@ its own. All of them take the org as the first argument and have a `--help`.
 **From GitHub:** the *Release an assignment* workflow in the course repository's **Actions**
 tab (or the course's page, which runs it for you) does everything below with the bot's token.
 Its form asks for the name, the repository holding the starting files (default
-`<name>-template`), the deadlines and an optional assignment to carry over from; tick
-*dry run* to see what would happen. The course's page can upload a folder of starting files
+`<name>-template`), the deadlines and an optional assignment to carry over from, or
+whether groups bring their own work instead; tick *dry run* to see what would happen. The course's page can upload a folder of starting files
 for you.
 
 **From a terminal:** create one when you release it. Nothing about assignments is set up in advance, so you
@@ -263,6 +263,43 @@ Worth knowing:
 - The push archive for the new assignment also lists the commits that came across,
   recorded as pushed by you at copy time. When the students actually pushed them is still
   in the archive under the previous assignment, which is the record that counts.
+
+### Work students already started elsewhere
+
+When students have already been working in repositories of their own, before bedel or
+outside it, `--own-work` lets them bring that work in instead of starting from files you
+provide (on the course's page: tick *Groups bring their own work*):
+
+```
+GH_TOKEN=$(gh auth token) python scripts/new_assignment.py a1 --own-work \
+    --soft-week 2026-10-06 --hard "2026-10-25 23:59"
+```
+
+Each group's `gXX_<numbers>-a1` is created **empty**, and the announcement issue gives them
+the commands to run in a clone of the repository they've been working in:
+
+```
+git remote add course https://github.com/ORG/gXX_<numbers>-a1.git
+git push course --all
+git push course --tags
+```
+
+Every branch, tag and commit comes across, with the original dates. From then on they push
+there, and deadlines, locking and the push archive work as for any other assignment. A
+group that hasn't started just clones the empty repository and begins.
+
+Worth knowing:
+
+- bedel can't copy their repositories for them: those belong to the students' own
+  accounts, usually private, and the bot's token reaches only the course's organization.
+- The repository has to be empty for that push to go through, so there are no starting
+  files and nothing to carry over; the option rules both out.
+- A group that registers later gets an empty repository too, and the same commands in the
+  comment that confirms its registration.
+- Their earlier pushes, to their own repository, aren't in the push archive. It records
+  the commits they bring in as pushed when they bring them in. The commit dates say when
+  the work was done, but those come from the students' machines and can be set by hand.
+- Re-running to move a deadline keeps the option; you don't need to pass it again.
 
 ### Telling students it's out
 
