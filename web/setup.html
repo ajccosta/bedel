@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- This page may load files from its own site and talk to api.github.com, and
      nothing else: your browser enforces that, whatever the scripts try. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data: https://avatars.githubusercontent.com; connect-src 'self' https://api.github.com; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://api.github.com; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <title>Set up a course — bedel</title>
 <meta name="description" content="Set up a course with bedel, step by step: organization, tokens, course, students.">
@@ -46,14 +46,12 @@
     <p class="callout"><strong>Create it before anything else.</strong> The tokens in the next steps are made for this
       organization alone, and GitHub can only tie a token to an organization that already exists.</p>
     <div class="row">
-      <a class="btn" href="https://github.com/account/organizations/new?plan=free" target="_blank" rel="noopener">Create an organization on GitHub ↗</a>
-    </div>
-    <div class="row">
       <label>Its name <input id="org" class="wide" placeholder="my-course-2026" autocomplete="off" spellcheck="false"></label>
-      <button class="btn" id="findOrg" type="button">Find it</button>
+      <a class="btn" href="https://github.com/account/organizations/new?plan=free" target="_blank" rel="noopener">Create it on GitHub ↗</a>
     </div>
+    <p class="hint">Use exactly this name when you create it. Already have one for this course? Just enter its name.
+      The next step checks it exists, and that you own it.</p>
     <div class="status" id="orgStatus"></div>
-    <div class="orgcard" id="orgCard" hidden><img id="orgAvatar" alt="" width="40" height="40"><div><strong id="orgName"></strong><br><span id="orgInfo"></span></div></div>
     <details>
       <summary>The course repository's name</summary>
       <div class="row">

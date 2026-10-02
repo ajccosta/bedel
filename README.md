@@ -54,7 +54,7 @@ how deadlines are worked out) is code you can read and change.
 | Groups              | students register against your roster, every member confirms | the first student creates the group, or you assign them |
 | Hard deadline       | repositories become read-only on the minute, by themselves | you close the assignment by hand |
 | Autograding         | not built in: add a workflow | built in |
-| Changing how it works | edit any file | the options the app offers |
+| Changing how it works | edit any file: the whole tool is your copy | your own grading scripts; the app itself is open source and could be forked |
 
 ## Starting a course
 

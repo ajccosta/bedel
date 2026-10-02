@@ -45,7 +45,7 @@ function invalidate(step) {
 }
 
 const CHECKS = {
-  1: () => ctx.org ? true : findOrg(),
+  1: useOrg,
   2: () => ctx.login ? true : checkSetupToken(),
   3: () => {
     const { errors } = readCourse();
@@ -74,32 +74,19 @@ function fillOrgNames() {
   refreshLinks();
 }
 
-async function findOrg() {
+// Only the name's shape is checked here, without asking GitHub: GitHub allows a page
+// few requests without a token, and the setup token's check proves the
+// organization exists, and that you own it, anyway.
+function useOrg() {
   const name = $("org").value.trim();
-  $("orgCard").hidden = true;
   if (!name) { setStatus("orgStatus", "Enter the organization's name.", "bad"); return false; }
-  if (!/^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$/.test(name)) {
-    setStatus("orgStatus", "That isn't an organization name: letters, digits and single hyphens.", "bad");
+  if (!/^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9]))*$/.test(name) || name.length > 39) {
+    setStatus("orgStatus", "That isn't an organization name: letters, digits and single hyphens, at most 39.", "bad");
     return false;
   }
-  setStatus("orgStatus", "Looking for it on GitHub…");
-  let o;
-  try { o = await gh(null, "GET", `/orgs/${name}`); }
-  catch (e) {
-    setStatus("orgStatus", e.status === 404
-      ? `There's no organization called ${name} on GitHub yet. Create it with the button above, then find it here.`
-      : [403, 429].includes(e.status)
-      ? "GitHub limits how often a page can look things up without a token. Wait a few minutes and try again."
-      : e.message, "bad");
-    return false;
-  }
-  ctx.org = o.login;
+  ctx.org = name;
   ctx.repo = $("repo").value.trim() || "registration";
-  $("orgAvatar").src = o.avatar_url;
-  $("orgName").textContent = o.name ? `${o.name} (${o.login})` : o.login;
-  $("orgInfo").textContent = `github.com/${o.login} · on GitHub since ${new Date(o.created_at).toLocaleDateString()}`;
-  $("orgCard").hidden = false;
-  setStatus("orgStatus", "Found it. The tokens in the next steps are made for this organization.", "ok");
+  setStatus("orgStatus", "");
   fillOrgNames();
   return true;
 }
@@ -118,6 +105,8 @@ async function checkSetupToken() {
   try {
     ctx.login = await checkToken(token, ctx.org, passed);
     ctx.token = token;
+    ctx.org = (await gh(token, "GET", `/orgs/${ctx.org}`)).login;   // as GitHub spells it
+    fillOrgNames();
     const { org, repo } = ctx;
     let message = `${org}/${repo} will be created at the end.`;
     if (await ops.findRepo(token, org, repo)) {
@@ -242,12 +231,10 @@ initStudentInputs();
 fillOrgNames();
 show(1);
 
-$("findOrg").onclick = async () => { if (await findOrg()) { done.add(1); show(1); } };
-$("org").addEventListener("keydown", (e) => { if (e.key === "Enter") $("findOrg").click(); });
+$("org").addEventListener("keydown", (e) => { if (e.key === "Enter") next(); });
 $("org").addEventListener("input", () => {
   ctx.org = ""; ctx.login = null; ctx.token = ""; botChecked = false;
   stored.bot = stored.roster = false;
-  $("orgCard").hidden = true;
   setStatus("orgStatus", "");
   for (const id of ["setupChecks", "botChecks"]) $(id).innerHTML = "";
   for (const id of ["setupStatus", "botStatus"]) setStatus(id, "");

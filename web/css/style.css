@@ -205,9 +205,6 @@ ol.progress li.is-current button::before { background: var(--accent); color: var
 .wstep > p.callout { color: var(--text); }
 .wizard-nav { display: flex; justify-content: space-between; margin-top: 16px; }
 .wizard-nav #next { margin-left: auto; }
-.orgcard { display: flex; align-items: center; gap: 12px; margin-top: 10px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; width: fit-content; max-width: 100%; }
-.orgcard img { border-radius: 8px; }
-.orgcard span { color: var(--muted); font-size: .9rem; }
 ul.plan { padding-left: 20px; display: grid; gap: 6px; color: var(--muted); font-size: .95rem; margin: 0 0 18px; }
 .done p { margin: 8px 0 0; }
 

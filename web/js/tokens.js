@@ -57,6 +57,10 @@ export async function checkToken(token, org, passed = () => {}) {
   try {
     await gh(token, "POST", `/orgs/${org}/repos`, {});
   } catch (e) {
+    if (e instanceof GitHubError && e.status === 404) {
+      throw new Error(`GitHub knows no organization called ${org} that this token can reach. Check the name, ` +
+        `that you've created the organization, and that the token's Resource owner is ${org}.`);
+    }
     if (!(e instanceof GitHubError) || e.status !== 422) {
       throw new Error(`This token can't work in ${org} (${e.message}). On its page on GitHub, check that ` +
         `Resource owner is ${org}, Repository access is All repositories, and Administration is Read and write. ` +

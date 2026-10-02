@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- This page may load files from its own site and talk to api.github.com, and
      nothing else: your browser enforces that, whatever the scripts try. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data: https://avatars.githubusercontent.com; connect-src 'self' https://api.github.com; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://api.github.com; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <title>bedel — run your course on GitHub</title>
 <meta name="description" content="Group registration, one repository per group per assignment, and deadlines enforced on the minute. A flexible alternative to GitHub Classroom and Classroom 50 (classroom50): every workflow, rule and form is a file you own.">
@@ -63,11 +63,11 @@
             <td class="gone">—</td></tr>
           <tr><td>Where it runs</td>
             <td>GitHub Actions, in one repository in your organization. No app, no server.</td>
-            <td>A web app or <code>gh</code> extensions, with background work in GitHub Actions in your organization. Some steps happen only while a teacher is signed in.</td>
+            <td>The classroom50.org web app or <code>gh</code> extensions, run as you while you're signed in, plus GitHub Actions in a <code>classroom50</code> repository in your organization</td>
             <td class="gone">GitHub's hosted service</td></tr>
           <tr><td>Changing how it works</td>
-            <td>Edit any workflow, script, rule or form: it's your copy of the code</td>
-            <td>The options the app offers</td>
+            <td>Edit any workflow, script, rule or form, including the course's page: the whole of it is your copy</td>
+            <td>Grading is yours: declarative tests or your own scripts. The rest is how the app works, which is open source, so you could fork it.</td>
             <td class="gone">The options the service offered</td></tr>
           <tr><td>Groups</td>
             <td>Students register through a form, checked against your roster and confirmed by every member</td>
